@@ -1,32 +1,33 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { useNotification } from "../../contexts/NotificationContext";
 
 /**
  * NotificationPanel Component
  *
- * Displays system notifications and alerts to the user in a persistent panel
- * that can be dismissed individually or cleared all at once.
+ * Displays system notifications in a floating panel
+ * Automatically removes notifications after a set time
  */
 const NotificationPanel = ({ notifications = [] }) => {
-	if (notifications.length === 0) {
-		return null;
-	}
+	const { removeNotification } = useNotification();
 
 	// Get icon based on notification type
 	const getNotificationIcon = (type) => {
 		switch (type) {
-			case "info":
-				return "ℹ️";
 			case "success":
 				return "✅";
-			case "warning":
-				return "⚠️";
 			case "error":
 				return "❌";
+			case "warning":
+				return "⚠️";
 			default:
-				return "📢";
+				return "ℹ️";
 		}
 	};
+
+	if (!notifications || notifications.length === 0) {
+		return null;
+	}
 
 	return (
 		<div className="notification-panel">
@@ -36,20 +37,18 @@ const NotificationPanel = ({ notifications = [] }) => {
 					className={`notification-item notification-${
 						notification.type || "info"
 					}`}>
-					<div className="notification-icon">
+					<span className="notification-icon">
 						{getNotificationIcon(notification.type)}
-					</div>
+					</span>
 					<div className="notification-content">
 						<div className="notification-title">{notification.title}</div>
 						<div className="notification-message">{notification.message}</div>
 					</div>
 					<button
 						className="notification-close"
-						onClick={() =>
-							notification.onClose && notification.onClose(notification.id)
-						}
-						aria-label="알림 닫기">
-						✕
+						onClick={() => removeNotification(notification.id)}
+						aria-label="Close notification">
+						×
 					</button>
 				</div>
 			))}
@@ -61,10 +60,9 @@ NotificationPanel.propTypes = {
 	notifications: PropTypes.arrayOf(
 		PropTypes.shape({
 			id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-			title: PropTypes.string.isRequired,
+			title: PropTypes.string,
 			message: PropTypes.string.isRequired,
 			type: PropTypes.oneOf(["info", "success", "warning", "error"]),
-			onClose: PropTypes.func,
 		})
 	),
 };

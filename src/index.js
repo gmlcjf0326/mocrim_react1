@@ -1,9 +1,10 @@
 import React from "react";
-import ReactDOM from "react-dom/client"; // ✅ 변경된 import
-import App from "./App"; // App 컴포넌트 import
-import "./AppStyles.css"; // 스타일 import
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./index.css"; // Base CSS with theme variables
+import "./AppStyles.css"; // Additional global styles
 
-const root = ReactDOM.createRoot(document.getElementById("root")); // ✅ 변경된 코드
+const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
 	<React.StrictMode>
 		<App />

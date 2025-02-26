@@ -1,154 +1,192 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
+import { useNavigate } from "react-router-dom";
+import { useNotification } from "../../contexts/NotificationContext";
 
 /**
  * QuickActions Component
  *
- * Provides a floating action button menu for quick access to common actions
- * based on the current active module.
+ * Floating action button that shows context-aware quick actions based on current module
  */
 const QuickActions = ({ activeModule }) => {
-	const [expanded, setExpanded] = useState(false);
+	const [isOpen, setIsOpen] = useState(false);
+	const navigate = useNavigate();
+	const { showNotification } = useNotification();
 
-	// Toggle the expanded state of the quick actions menu
-	const toggleExpanded = () => {
-		setExpanded(!expanded);
-	};
-
-	// Get actions based on active module
-	const getActions = () => {
+	// Get actions based on current module
+	const getActionsForModule = () => {
 		switch (activeModule) {
 			case "purchase":
 				return [
 					{
-						id: "add-vendor",
-						icon: "🏢",
-						label: "매입사 추가",
-						action: () => console.log("매입사 추가 액션 실행"),
+						id: "new-order",
+						label: "신규 발주",
+						icon: "📝",
+						path: "/purchase/vendors",
 					},
 					{
-						id: "add-material",
+						id: "inventory",
+						label: "원자재 관리",
 						icon: "📦",
-						label: "자재 입고",
-						action: () => console.log("자재 입고 액션 실행"),
+						path: "/purchase/inventory",
 					},
 					{
-						id: "inventory-check",
-						icon: "🔍",
-						label: "재고 조사",
-						action: () => console.log("재고 조사 액션 실행"),
+						id: "vendor",
+						label: "매입사 관리",
+						icon: "🏢",
+						path: "/purchase/vendors",
 					},
 				];
 			case "production":
 				return [
 					{
-						id: "add-production",
+						id: "new-production",
+						label: "신규 생산",
 						icon: "🏭",
-						label: "생산 요청",
-						action: () => console.log("생산 요청 액션 실행"),
+						path: "/production/woodesty",
 					},
 					{
-						id: "quality-check",
-						icon: "✓",
-						label: "품질 검수",
-						action: () => console.log("품질 검수 액션 실행"),
+						id: "materials",
+						label: "자재 관리",
+						icon: "📦",
+						path: "/production/woodesty",
 					},
 					{
-						id: "material-allocation",
-						icon: "🔄",
-						label: "자재 할당",
-						action: () => console.log("자재 할당 액션 실행"),
+						id: "processors",
+						label: "임가공 관리",
+						icon: "🤝",
+						path: "/production/outsourced",
 					},
 				];
 			case "orders":
 				return [
 					{
-						id: "add-order",
+						id: "new-order",
+						label: "신규 수주",
 						icon: "📋",
-						label: "주문 추가",
-						action: () => console.log("주문 추가 액션 실행"),
+						path: "/orders/management",
 					},
 					{
-						id: "shipping",
+						id: "delivery",
+						label: "배송 관리",
 						icon: "🚚",
-						label: "출고 처리",
-						action: () => console.log("출고 처리 액션 실행"),
+						path: "/orders/management",
 					},
 					{
-						id: "invoice",
-						icon: "📃",
-						label: "거래명세서",
-						action: () => console.log("거래명세서 액션 실행"),
+						id: "inventory",
+						label: "제품 재고",
+						icon: "📦",
+						path: "/orders/inventory",
 					},
 				];
 			case "financial":
 				return [
 					{
-						id: "add-payment",
-						icon: "💰",
+						id: "new-collection",
 						label: "수금 등록",
-						action: () => console.log("수금 등록 액션 실행"),
+						icon: "💰",
+						path: "/financial/collection",
 					},
 					{
-						id: "add-expense",
+						id: "new-payment",
+						label: "지급 등록",
 						icon: "💸",
-						label: "지출 등록",
-						action: () => console.log("지출 등록 액션 실행"),
+						path: "/financial/payment",
 					},
 					{
-						id: "finance-report",
+						id: "reports",
+						label: "보고서 생성",
 						icon: "📊",
-						label: "재무 보고서",
-						action: () => console.log("재무 보고서 액션 실행"),
+						path: "/financial/dashboard",
+					},
+				];
+			case "settings":
+				return [
+					{
+						id: "user-settings",
+						label: "사용자 설정",
+						icon: "👤",
+						path: "/settings",
+					},
+					{
+						id: "system-settings",
+						label: "시스템 설정",
+						icon: "⚙️",
+						path: "/settings",
 					},
 				];
 			default:
 				return [
 					{
-						id: "help",
-						icon: "❓",
-						label: "도움말",
-						action: () => console.log("도움말 액션 실행"),
+						id: "purchase",
+						label: "매입 관리",
+						icon: "📦",
+						path: "/purchase/dashboard",
 					},
 					{
-						id: "feedback",
-						icon: "💬",
-						label: "피드백",
-						action: () => console.log("피드백 액션 실행"),
+						id: "production",
+						label: "생산 관리",
+						icon: "🏭",
+						path: "/production/dashboard",
+					},
+					{
+						id: "orders",
+						label: "수주/출고 관리",
+						icon: "📋",
+						path: "/orders/dashboard",
+					},
+					{
+						id: "financial",
+						label: "수금/지급 관리",
+						icon: "💰",
+						path: "/financial/dashboard",
 					},
 				];
 		}
 	};
 
-	const actions = getActions();
+	// Handle action click
+	const handleActionClick = (action) => {
+		navigate(action.path);
+		setIsOpen(false);
+
+		showNotification({
+			title: "Quick Action",
+			message: `이동: ${action.label}`,
+			type: "info",
+		});
+	};
+
+	// Toggle quick action menu
+	const toggleMenu = () => {
+		setIsOpen(!isOpen);
+	};
+
+	// Get available actions for current module
+	const actions = getActionsForModule();
 
 	return (
 		<div className="quick-actions">
-			{expanded && (
+			{isOpen && (
 				<div className="quick-action-menu">
 					{actions.map((action) => (
 						<button
 							key={action.id}
 							className="quick-action-item"
-							onClick={() => {
-								action.action();
-								setExpanded(false);
-							}}
-							aria-label={action.label}
-							title={action.label}>
+							onClick={() => handleActionClick(action)}
+							aria-label={action.label}>
 							<span className="quick-action-icon">{action.icon}</span>
-							<span className="quick-action-label">{action.label}</span>
+							{action.label}
 						</button>
 					))}
 				</div>
 			)}
-
 			<button
-				className={`quick-action-main ${expanded ? "active" : ""}`}
-				onClick={toggleExpanded}
-				aria-label={expanded ? "빠른 액션 닫기" : "빠른 액션 메뉴 열기"}
-				aria-expanded={expanded}>
-				{expanded ? "✕" : "+"}
+				className={`quick-action-main ${isOpen ? "active" : ""}`}
+				onClick={toggleMenu}
+				aria-label={isOpen ? "Close quick actions" : "Open quick actions"}
+				aria-expanded={isOpen}>
+				{isOpen ? "×" : "+"}
 			</button>
 		</div>
 	);
@@ -162,7 +200,7 @@ QuickActions.propTypes = {
 		"orders",
 		"financial",
 		"settings",
-	]),
+	]).isRequired,
 };
 
 export default QuickActions;
