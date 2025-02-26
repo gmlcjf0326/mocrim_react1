@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
+import { useNotification } from "../../contexts/NotificationContext";
 import "./VendorManagement.css";
 
 /**
@@ -32,6 +33,21 @@ const VendorManagement = ({ initialVendorType = "vendor" }) => {
 		details: null,
 		history: null,
 	});
+
+	// Modal states
+	const [showVendorModal, setShowVendorModal] = useState(false);
+	const [modalMode, setModalMode] = useState("add"); // "add" or "edit"
+	const [vendorForm, setVendorForm] = useState({
+		name: "",
+		ceo: "",
+		businessNumber: "",
+		businessType: "",
+		contact: "",
+		address: "",
+		paymentInfo: "",
+	});
+
+	const { showNotification } = useNotification();
 
 	// Mock data - would be replaced with API calls in production
 	const mockVendors = {
@@ -596,6 +612,133 @@ const VendorManagement = ({ initialVendorType = "vendor" }) => {
 		// This could be expanded to perform more complex searches or API calls
 	};
 
+	// Handle opening vendor modal (add new or edit)
+	const handleOpenVendorModal = (mode, vendor = null) => {
+		setModalMode(mode);
+		if (mode === "edit" && vendor) {
+			// Populate form with vendor data
+			setVendorForm({
+				name: vendor.name,
+				ceo: vendor.ceo,
+				businessNumber: vendor.businessNumber,
+				businessType: vendor.businessType,
+				contact: vendor.contact,
+				address: vendor.address,
+				paymentInfo: vendor.paymentInfo,
+			});
+		} else {
+			// Reset form for new vendor
+			setVendorForm({
+				name: "",
+				ceo: "",
+				businessNumber: "",
+				businessType: "",
+				contact: "",
+				address: "",
+				paymentInfo: "",
+			});
+		}
+		setShowVendorModal(true);
+	};
+
+	// Handle form input changes
+	const handleVendorFormChange = (e) => {
+		const { name, value } = e.target;
+		setVendorForm((prev) => ({
+			...prev,
+			[name]: value,
+		}));
+	};
+
+	// Handle vendor form submission
+	const handleVendorFormSubmit = (e) => {
+		e.preventDefault();
+
+		// Validate form
+		if (!vendorForm.name || !vendorForm.businessNumber) {
+			showNotification({
+				title: "입력 오류",
+				message: "업체명과 사업자등록번호는 필수 입력 항목입니다.",
+				type: "error",
+			});
+			return;
+		}
+
+		// In a real application, this would be an API call
+		// const response = await api.saveVendor(vendorForm);
+
+		// Simulate API response
+		setTimeout(() => {
+			if (modalMode === "add") {
+				// Add new vendor to list
+				const newVendor = {
+					id: Math.max(...vendors.map((v) => v.id), 0) + 1,
+					...vendorForm,
+				};
+				setVendors((prev) => [...prev, newVendor]);
+				setFilteredVendors((prev) => [...prev, newVendor]);
+
+				showNotification({
+					title: "등록 완료",
+					message: `${vendorForm.name} ${
+						vendorType === "vendor" ? "매입사" : "임가공사"
+					}가 등록되었습니다.`,
+					type: "success",
+				});
+			} else {
+				// Update existing vendor
+				const updatedVendors = vendors.map((v) =>
+					v.id === selectedVendor.id ? { ...v, ...vendorForm } : v
+				);
+				setVendors(updatedVendors);
+				setFilteredVendors(
+					updatedVendors.filter((vendor) =>
+						vendor.name.toLowerCase().includes(searchTerm.toLowerCase())
+					)
+				);
+				setSelectedVendor({ ...selectedVendor, ...vendorForm });
+
+				showNotification({
+					title: "수정 완료",
+					message: `${vendorForm.name} 정보가 수정되었습니다.`,
+					type: "success",
+				});
+			}
+
+			setShowVendorModal(false);
+		}, 500);
+	};
+
+	// Handle vendor deletion
+	const handleDeleteVendor = () => {
+		if (!selectedVendor) return;
+
+		if (window.confirm(`${selectedVendor.name}을(를) 정말 삭제하시겠습니까?`)) {
+			// In a real application, this would be an API call
+			// await api.deleteVendor(selectedVendor.id);
+
+			// Simulate API response
+			setTimeout(() => {
+				const updatedVendors = vendors.filter(
+					(v) => v.id !== selectedVendor.id
+				);
+				setVendors(updatedVendors);
+				setFilteredVendors(
+					updatedVendors.filter((vendor) =>
+						vendor.name.toLowerCase().includes(searchTerm.toLowerCase())
+					)
+				);
+				setSelectedVendor(null);
+
+				showNotification({
+					title: "삭제 완료",
+					message: `${selectedVendor.name}이(가) 삭제되었습니다.`,
+					type: "success",
+				});
+			}, 500);
+		}
+	};
+
 	// Render vendor list section
 	const renderVendorList = () => {
 		if (loading.vendors) {
@@ -700,7 +843,6 @@ const VendorManagement = ({ initialVendorType = "vendor" }) => {
 		);
 	};
 
-	// Render product details section
 	// Render product details section
 	const renderProductDetails = () => {
 		if (!selectedProduct) {
@@ -878,7 +1020,125 @@ const VendorManagement = ({ initialVendorType = "vendor" }) => {
 		);
 	};
 
-	// Main render
+	// Render vendor modal
+	const renderVendorModal = () => {
+		if (!showVendorModal) return null;
+
+		return (
+			<div className="modal-overlay">
+				<div className="vendor-modal">
+					<div className="modal-header">
+						<h2 className="modal-title">
+							{modalMode === "add"
+								? `${vendorType === "vendor" ? "매입사" : "임가공사"} 등록`
+								: `${selectedVendor.name} 정보 수정`}
+						</h2>
+						<button
+							className="modal-close-btn"
+							onClick={() => setShowVendorModal(false)}>
+							×
+						</button>
+					</div>
+					<div className="modal-content">
+						<form onSubmit={handleVendorFormSubmit}>
+							<div className="form-group">
+								<label htmlFor="name">
+									업체명 <span className="required">*</span>
+								</label>
+								<input
+									type="text"
+									id="name"
+									name="name"
+									value={vendorForm.name}
+									onChange={handleVendorFormChange}
+									required
+								/>
+							</div>
+							<div className="form-row">
+								<div className="form-group">
+									<label htmlFor="ceo">대표자명</label>
+									<input
+										type="text"
+										id="ceo"
+										name="ceo"
+										value={vendorForm.ceo}
+										onChange={handleVendorFormChange}
+									/>
+								</div>
+								<div className="form-group">
+									<label htmlFor="businessNumber">
+										사업자 등록번호 <span className="required">*</span>
+									</label>
+									<input
+										type="text"
+										id="businessNumber"
+										name="businessNumber"
+										value={vendorForm.businessNumber}
+										onChange={handleVendorFormChange}
+										required
+									/>
+								</div>
+							</div>
+							<div className="form-group">
+								<label htmlFor="businessType">업태/업종</label>
+								<input
+									type="text"
+									id="businessType"
+									name="businessType"
+									value={vendorForm.businessType}
+									onChange={handleVendorFormChange}
+								/>
+							</div>
+							<div className="form-group">
+								<label htmlFor="contact">전화번호/팩스번호</label>
+								<input
+									type="text"
+									id="contact"
+									name="contact"
+									value={vendorForm.contact}
+									onChange={handleVendorFormChange}
+								/>
+							</div>
+							<div className="form-group">
+								<label htmlFor="address">사업장 주소</label>
+								<input
+									type="text"
+									id="address"
+									name="address"
+									value={vendorForm.address}
+									onChange={handleVendorFormChange}
+								/>
+							</div>
+							<div className="form-group">
+								<label htmlFor="paymentInfo">정산 정보/담당자 정보</label>
+								<textarea
+									id="paymentInfo"
+									name="paymentInfo"
+									value={vendorForm.paymentInfo}
+									onChange={handleVendorFormChange}
+									rows={3}
+								/>
+							</div>
+							<div className="modal-footer">
+								<button
+									type="submit"
+									className="btn btn-primary">
+									{modalMode === "add" ? "등록" : "수정"}
+								</button>
+								<button
+									type="button"
+									className="btn btn-secondary"
+									onClick={() => setShowVendorModal(false)}>
+									취소
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+		);
+	};
+
 	return (
 		<div className="vendor-management">
 			{/* Vendor search section */}
@@ -969,16 +1229,29 @@ const VendorManagement = ({ initialVendorType = "vendor" }) => {
 
 			{/* Action buttons */}
 			<div className="action-buttons">
-				<button className="action-button add-button">
+				<button
+					className="action-button add-button"
+					onClick={() => handleOpenVendorModal("add")}>
 					새 {vendorType === "vendor" ? "매입사" : "임가공사"} 등록
 				</button>
 				{selectedVendor && (
 					<>
-						<button className="action-button edit-button">정보 수정</button>
-						<button className="action-button delete-button">삭제</button>
+						<button
+							className="action-button edit-button"
+							onClick={() => handleOpenVendorModal("edit", selectedVendor)}>
+							정보 수정
+						</button>
+						<button
+							className="action-button delete-button"
+							onClick={handleDeleteVendor}>
+							삭제
+						</button>
 					</>
 				)}
 			</div>
+
+			{/* Vendor modal */}
+			{renderVendorModal()}
 		</div>
 	);
 };

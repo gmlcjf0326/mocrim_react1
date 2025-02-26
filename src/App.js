@@ -9,7 +9,6 @@ import {
 import "./AppStyles.css";
 
 // Import dashboard components
-
 import Dashboard from "./components/Dashboard/Dashboard";
 import VendorManagement from "./components/VendorManagement/VendorManagement";
 import InventoryManagement from "./components/InventoryManagement/InventoryManagement";
