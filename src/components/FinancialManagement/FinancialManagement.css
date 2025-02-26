@@ -1,0 +1,498 @@
+/* Financial Management Component Styles */
+.financial-management {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	width: 100%;
+	height: 100%;
+}
+
+/* Header section */
+.financial-header {
+	display: flex;
+	flex-direction: column;
+	gap: 15px;
+	padding: 15px;
+	background-color: white;
+	border-radius: 8px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.module-title {
+	font-size: 1.5rem;
+	font-weight: 600;
+	color: #333;
+	margin-bottom: 10px;
+}
+
+.transaction-type-selector {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 10px;
+}
+
+.transaction-type-btn {
+	padding: 10px 20px;
+	background-color: #f5f5f5;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.transaction-type-btn.active {
+	background-color: #8e44ad;
+	color: white;
+	border-color: #8e44ad;
+}
+
+/* Summary section */
+.summary-section {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 15px;
+	margin: 10px 0;
+}
+
+.summary-item {
+	background-color: #f8f9fa;
+	border-radius: 4px;
+	padding: 10px 15px;
+	flex: 1;
+	min-width: 150px;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.summary-label {
+	font-size: 13px;
+	color: #555;
+}
+
+.summary-value {
+	font-size: 16px;
+	font-weight: 600;
+}
+
+.summary-value.success {
+	color: #2ecc71;
+}
+
+.summary-value.warning {
+	color: #f39c12;
+}
+
+.summary-value.danger {
+	color: #e74c3c;
+}
+
+.summary-value.info {
+	color: #3498db;
+}
+
+.transaction-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 15px;
+	align-items: center;
+}
+
+.search-form {
+	display: flex;
+	gap: 8px;
+	flex: 1;
+	min-width: 300px;
+}
+
+.search-input {
+	flex: 1;
+	padding: 8px 12px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	font-size: 14px;
+}
+
+.search-button {
+	padding: 8px 16px;
+	background-color: #8e44ad;
+	color: white;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+.search-button:hover {
+	background-color: #6c3483;
+}
+
+.filter-selects {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 15px;
+}
+
+.filter-group {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.date-range {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.date-input {
+	padding: 8px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	width: 140px;
+	font-size: 14px;
+}
+
+.date-separator {
+	font-weight: 500;
+}
+
+.filter-select {
+	padding: 8px 12px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	background-color: white;
+	font-size: 14px;
+	min-width: 120px;
+}
+
+.transaction-actions {
+	display: flex;
+	gap: 10px;
+	align-self: flex-end;
+}
+
+/* Main content area */
+.financial-content {
+	display: flex;
+	gap: 20px;
+}
+
+.transaction-list-section {
+	width: 65%;
+	background-color: white;
+	border-radius: 8px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	padding: 15px;
+	overflow-x: auto;
+}
+
+.transaction-details-section {
+	width: 35%;
+	background-color: white;
+	border-radius: 8px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	padding: 15px;
+	overflow-y: auto;
+	max-height: 600px;
+}
+
+.transaction-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+}
+
+.transaction-table th,
+.transaction-table td {
+	padding: 10px;
+	text-align: left;
+	border-bottom: 1px solid #eee;
+}
+
+.transaction-table th {
+	font-weight: 600;
+	background-color: #f9f9f9;
+}
+
+.transaction-item {
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+.transaction-item:hover {
+	background-color: #f5f5f5;
+}
+
+.transaction-item.selected {
+	background-color: #f5eef8;
+	border-left: 3px solid #8e44ad;
+}
+
+.status-badge {
+	display: inline-block;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.status-pending {
+	background-color: #fff8e1;
+	color: #f57f17;
+}
+
+.status-completed {
+	background-color: #e8f5e9;
+	color: #2e7d32;
+}
+
+.status-overdue {
+	background-color: #ffebee;
+	color: #c62828;
+}
+
+/* Transaction details styles */
+.details-title {
+	font-size: 18px;
+	font-weight: 600;
+	margin-bottom: 20px;
+	color: #8e44ad;
+}
+
+.details-section {
+	margin-bottom: 25px;
+}
+
+.section-subtitle {
+	font-size: 16px;
+	font-weight: 600;
+	margin-bottom: 15px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid #eee;
+	color: #333;
+}
+
+.details-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 12px;
+}
+
+.details-item {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.details-label {
+	font-weight: 600;
+	font-size: 13px;
+	color: #555;
+}
+
+.details-value {
+	font-size: 14px;
+}
+
+.details-value.highlight {
+	font-weight: 600;
+	color: #8e44ad;
+}
+
+/* History tables */
+.history-table,
+.documents-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+	margin-top: 10px;
+}
+
+.history-table th,
+.history-table td,
+.documents-table th,
+.documents-table td {
+	padding: 10px;
+	text-align: left;
+	border: 1px solid #eee;
+}
+
+.history-table th,
+.documents-table th {
+	background-color: #f5f5f5;
+	font-weight: 600;
+}
+
+.action-link {
+	background: none;
+	border: none;
+	color: #8e44ad;
+	text-decoration: underline;
+	cursor: pointer;
+	margin-right: 8px;
+	font-size: 13px;
+}
+
+.action-link:hover {
+	color: #6c3483;
+}
+
+/* Action buttons */
+.action-buttons {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+	margin-top: 20px;
+}
+
+.action-button {
+	padding: 10px 15px;
+	border: none;
+	border-radius: 4px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.complete-button {
+	background-color: #2ecc71;
+	color: white;
+}
+
+.complete-button:hover {
+	background-color: #27ae60;
+}
+
+.overdue-button {
+	background-color: #e74c3c;
+	color: white;
+}
+
+.overdue-button:hover {
+	background-color: #c0392b;
+}
+
+.edit-button {
+	background-color: #f39c12;
+	color: white;
+}
+
+.edit-button:hover {
+	background-color: #d68910;
+}
+
+.print-button {
+	background-color: #7f8c8d;
+	color: white;
+}
+
+.print-button:hover {
+	background-color: #616a6b;
+}
+
+.cancel-button {
+	background-color: #e74c3c;
+	color: white;
+}
+
+.cancel-button:hover {
+	background-color: #c0392b;
+}
+
+/* Utility classes */
+.loading-indicator {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 20px;
+	color: #777;
+}
+
+.error-message {
+	color: #c62828;
+	padding: 15px;
+	background-color: #ffebee;
+	border-radius: 4px;
+	margin: 10px 0;
+}
+
+.no-data {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 30px;
+	color: #777;
+	font-style: italic;
+	background-color: #f9f9f9;
+	border-radius: 4px;
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+	.financial-content {
+		flex-direction: column;
+	}
+
+	.transaction-list-section,
+	.transaction-details-section {
+		width: 100%;
+	}
+
+	.transaction-details-section {
+		max-height: none;
+	}
+
+	.details-grid {
+		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	}
+
+	.summary-section {
+		flex-wrap: wrap;
+	}
+
+	.summary-item {
+		flex-basis: calc(50% - 8px);
+	}
+}
+
+@media (max-width: 768px) {
+	.transaction-filters {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.filter-selects {
+		flex-direction: column;
+	}
+
+	.date-range {
+		flex-wrap: wrap;
+	}
+
+	.details-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.action-buttons {
+		flex-direction: column;
+	}
+
+	.action-button {
+		width: 100%;
+	}
+
+	.summary-item {
+		flex-basis: 100%;
+	}
+
+	.transaction-actions {
+		flex-direction: column;
+		align-self: stretch;
+	}
+
+	.transaction-actions .btn {
+		width: 100%;
+	}
+}
