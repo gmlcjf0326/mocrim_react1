@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import "./FloorInventoryManagement.css";
 
@@ -14,6 +15,7 @@ const FloorInventoryManagement = () => {
 	const [estimatedTime, setEstimatedTime] = useState(30);
 	const [qrValue, setQrValue] = useState("");
 	const [scanError, setScanError] = useState("");
+	const navigate = useNavigate();
 
 	// 모의 재고 데이터
 	const mockInventoryItems = [
@@ -171,6 +173,11 @@ const FloorInventoryManagement = () => {
 		);
 	};
 
+	// 뒤로 가기 처리
+	const handleGoBack = () => {
+		navigate(-1);
+	};
+
 	// 필터링된 재고 항목
 	const filteredItems = inventoryItems.filter((item) => {
 		// 검색어 필터링
@@ -205,7 +212,14 @@ const FloorInventoryManagement = () => {
 	return (
 		<div className="floor-inventory-management">
 			<div className="inventory-header">
-				<h1 className="module-title">자재부 재고 관리</h1>
+				<div className="header-navigation">
+					<button
+						className="btn btn-secondary back-button"
+						onClick={handleGoBack}>
+						&larr; 뒤로 가기
+					</button>
+					<h1 className="module-title">자재부 재고 관리</h1>
+				</div>
 
 				<div className="inventory-controls">
 					<div className="scan-mode-selector">

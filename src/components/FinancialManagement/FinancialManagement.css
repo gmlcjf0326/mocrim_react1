@@ -154,7 +154,7 @@
 
 /* 거래 목록 섹션 */
 .transaction-list-section {
-	flex: 1;
+	flex: 0.5;
 	background-color: white;
 	border-radius: 8px;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -245,7 +245,7 @@
 }
 
 .transaction-details-section {
-	flex: 1;
+	flex: 0.5;
 	background-color: white;
 	border-radius: 8px;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -253,7 +253,6 @@
 	display: flex;
 	flex-direction: column;
 	overflow: auto;
-	max-width: 450px;
 }
 
 .details-section {
@@ -269,23 +268,28 @@
 	border-bottom: 1px solid #eee;
 }
 
+/* More efficient details item layout */
 .details-item {
-	display: flex;
-	justify-content: space-between;
+	display: grid;
+	grid-template-columns: minmax(120px, 30%) 1fr;
+	gap: 15px;
 	margin-bottom: 12px;
+	align-items: center;
 }
 
 .details-label {
 	font-weight: 500;
-	color: #555; /* 색상 진하게 조정 */
+	color: #555;
 	font-size: 0.95rem;
 }
 
 .details-value {
 	font-weight: 400;
-	color: #333; /* 색상 진하게 조정 */
+	color: #333;
 	font-size: 0.95rem;
-	text-align: right;
+	text-align: left; /* Changed from right to left for better readability */
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 /* 거래 요약 */
@@ -545,6 +549,21 @@
 }
 
 @media (max-width: 768px) {
+	.details-section {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+		gap: 15px 25px;
+	}
+
+	/* Certain full-width items can span all columns */
+	.details-item.full-width {
+		grid-column: 1 / -1;
+	}
+
+	/* For more compact display in smaller sections */
+	.compact-details .details-item {
+		margin-bottom: 8px;
+	}
 	.filter-row {
 		flex-direction: column;
 		gap: 10px;
@@ -563,7 +582,6 @@
 		min-width: 120px;
 	}
 }
-
 @media (max-width: 576px) {
 	.transaction-type-selector {
 		flex-wrap: wrap;
