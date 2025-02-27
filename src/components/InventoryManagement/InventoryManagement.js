@@ -1,1113 +1,810 @@
-import React, { useState, useEffect, useCallback } from "react";
-import PropTypes from "prop-types";
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useNotification } from "../../contexts/NotificationContext";
+import { QRCodeCanvas } from "qrcode.react";
 import "./InventoryManagement.css";
 
-/**
- * InventoryManagement Component
- *
- * Manages inventory for both raw materials and finished products
- * with stock level monitoring, alerts, and inventory operations
- */
-const InventoryManagement = ({ inventoryType = "raw-material" }) => {
-	const [inventory, setInventory] = useState([]);
-	const [filteredInventory, setFilteredInventory] = useState([]);
-	const [selectedItem, setSelectedItem] = useState(null);
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState(null);
-	const [searchTerm, setSearchTerm] = useState("");
-	const [categoryFilter, setCategoryFilter] = useState("all");
-	const [statusFilter, setStatusFilter] = useState("all");
-	const [showAddModal, setShowAddModal] = useState(false);
-	const [showAdjustModal, setShowAdjustModal] = useState(false);
-	const [itemHistory, setItemHistory] = useState([]);
-	const [loadingHistory, setLoadingHistory] = useState(false);
+// 날짜 포맷팅 함수
+const formatDate = (dateString) => {
+	const options = { year: "numeric", month: "2-digit", day: "2-digit" };
+	return new Date(dateString).toLocaleDateString(undefined, options);
+};
 
+// 수량 배지 클래스 함수
+const getQuantityBadgeClass = (item) => {
+	if (item.quantity <= item.minQuantity) {
+		return "low-stock";
+	}
+	return "sufficient-stock";
+};
+/**
+ * InventoryManagement 컴포넌트
+ *
+ * 자재 관리, QR 코드 스캔 및 처리
+ * view 타입: list, scan, details, transaction
+ */
+const InventoryManagement = ({ view = "list" }) => {
+	// 라우터 훅
+	const { itemId } = useParams();
+	const navigate = useNavigate();
 	const { showNotification } = useNotification();
 
-	// Mock data for raw materials inventory
-	const mockRawMaterials = [
-		{
-			id: 1,
-			code: "RM-1001",
-			name: "PB E0 18mm",
-			category: "panel",
-			description: "파티클보드 E0 등급 18mm",
-			stock: 850,
-			unit: "장",
-			minStock: 500,
-			maxStock: 1000,
-			status: "normal",
-			location: "3층-A01",
-			supplier: "동화기업",
-			lastUpdated: "2025-02-20",
-			price: 28000,
-		},
-		{
-			id: 2,
-			code: "RM-1002",
-			name: "PB E1 15mm",
-			category: "panel",
-			description: "파티클보드 E1 등급 15mm",
-			stock: 320,
-			unit: "장",
-			minStock: 300,
-			maxStock: 800,
-			status: "warning",
-			location: "3층-A02",
-			supplier: "한솔홈데코",
-			lastUpdated: "2025-02-22",
-			price: 25000,
-		},
-		{
-			id: 3,
-			code: "RM-2001",
-			name: "TL-400(친환경)",
-			category: "adhesive",
-			description: "친환경 접착제 TL-400",
-			stock: 120,
-			unit: "통",
-			minStock: 100,
-			maxStock: 200,
-			status: "normal",
-			location: "3층-B03",
-			supplier: "성창기업",
-			lastUpdated: "2025-02-18",
-			price: 42000,
-		},
-		{
-			id: 4,
-			code: "RM-3001",
-			name: "3808-3(DH-JO-11) O/L",
-			category: "finish",
-			description: "오버레이 시트지 3808-3 모델",
-			stock: 150,
-			unit: "장",
-			minStock: 200,
-			maxStock: 400,
-			status: "warning",
-			location: "3층-C02",
-			supplier: "디자인월",
-			lastUpdated: "2025-02-19",
-			price: 15000,
-		},
-	];
+	// 상태 관리
+	const [activeTab, setActiveTab] = useState("all");
+	const [inventoryItems, setInventoryItems] = useState([]);
+	const [selectedItem, setSelectedItem] = useState(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
 
-	// Mock data for finished products inventory
-	const mockProducts = [
-		{
-			id: 1,
-			code: "P001",
-			name: "3808-3/양면 E0 18mm",
-			category: "laminated-board",
-			description: "3808-3 양면 오버레이 E0 18mm 합판",
-			stock: 120,
-			unit: "장",
-			minStock: 80,
-			maxStock: 200,
-			status: "normal",
-			location: "2층-A05",
-			lastUpdated: "2025-02-21",
-			price: 45000,
-		},
-		{
-			id: 2,
-			code: "P002",
-			name: "UV무늬목 15mm",
-			category: "uv-board",
-			description: "UV코팅 무늬목 15mm 합판",
-			stock: 80,
-			unit: "장",
-			minStock: 60,
-			maxStock: 150,
-			status: "normal",
-			location: "2층-A08",
-			lastUpdated: "2025-02-20",
-			price: 55000,
-		},
-		{
-			id: 3,
-			code: "P003",
-			name: "방염합판 9mm",
-			category: "fire-resistant",
-			description: "방염처리된 9mm 합판",
-			stock: 30,
-			unit: "장",
-			minStock: 40,
-			maxStock: 100,
-			status: "critical",
-			location: "2층-B02",
-			lastUpdated: "2025-02-22",
-			price: 62000,
-		},
-		{
-			id: 4,
-			code: "P004",
-			name: "씽크대문짝 W600",
-			category: "cabinet-door",
-			description: "W600 규격 씽크대문짝",
-			stock: 35,
-			unit: "개",
-			minStock: 30,
-			maxStock: 60,
-			status: "normal",
-			location: "2층-C01",
-			lastUpdated: "2025-02-23",
-			price: 38000,
-		},
-	];
+	// QR 코드 스캔 관련 상태
+	const [scannedCode, setScannedCode] = useState(null);
+	const [isScanning, setIsScanning] = useState(false);
+	const scannerIntervalRef = useRef(null);
 
-	// Mock inventory history data
-	const mockInventoryHistory = {
-		1: [
-			{
-				id: 1,
-				date: "2025-02-20",
-				type: "입고",
-				quantity: 150,
-				balance: 850,
-				reference: "PO-2025022001",
-				user: "김창고",
-				notes: "동화기업 정기 입고",
-			},
-			{
-				id: 2,
-				date: "2025-02-18",
-				type: "출고",
-				quantity: -50,
-				balance: 700,
-				reference: "WO-2025021801",
-				user: "박생산",
-				notes: "생산 투입",
-			},
-			{
-				id: 3,
-				date: "2025-02-15",
-				type: "입고",
-				quantity: 200,
-				balance: 750,
-				reference: "PO-2025021501",
-				user: "김창고",
-				notes: "동화기업 정기 입고",
-			},
-		],
-	};
+	// 입출고 폼 데이터
+	const [transactionForm, setTransactionForm] = useState({
+		type: "out", // 'in' 또는 'out'
+		quantity: 1,
+		location: "",
+		notes: "",
+	});
 
-	// Category options
-	const categoryOptions = {
-		"raw-material": [
-			{ id: "all", name: "전체" },
-			{ id: "panel", name: "판재" },
-			{ id: "adhesive", name: "접착제" },
-			{ id: "finish", name: "마감재" },
-		],
-		product: [
-			{ id: "all", name: "전체" },
-			{ id: "laminated-board", name: "합판" },
-			{ id: "uv-board", name: "UV합판" },
-			{ id: "fire-resistant", name: "방염합판" },
-			{ id: "cabinet-door", name: "씽크대문짝" },
-		],
-	};
-
-	// Status filter options
-	const statusOptions = [
-		{ id: "all", name: "전체" },
-		{ id: "normal", name: "정상" },
-		{ id: "warning", name: "요주의" },
-		{ id: "critical", name: "부족" },
-	];
-
-	// Load inventory data
+	// 자재 데이터 불러오기 (목업 데이터)
 	useEffect(() => {
-		const fetchInventory = async () => {
-			setLoading(true);
+		const fetchInventoryItems = async () => {
 			try {
-				// In a real app, this would be an API call
-				// const response = await api.getInventory(inventoryType);
-				// setInventory(response.data);
+				setLoading(true);
+				// 실제 구현에서는 API 호출로 대체됨
+				const mockInventoryItems = [
+					{
+						id: "INV-KF153",
+						name: "강화마루 KF153",
+						category: "마루",
+						location: "2층 쇼케이스",
+						quantity: 120,
+						unit: "박스",
+						minQuantity: 20,
+						qrCode: "INV-KF153-QR",
+						lastUpdated: "2023-09-28",
+						movements: [
+							{
+								id: 1,
+								type: "in",
+								quantity: 50,
+								date: "2023-09-15",
+								location: "3층 창고",
+								notes: "발주 입고",
+							},
+							{
+								id: 2,
+								type: "out",
+								quantity: 10,
+								date: "2023-09-20",
+								location: "2층 쇼케이스",
+								notes: "주문 ORD-20230001",
+							},
+							{
+								id: 3,
+								type: "in",
+								quantity: 80,
+								date: "2023-09-25",
+								location: "3층 창고",
+								notes: "발주 입고",
+							},
+						],
+					},
+					{
+						id: "INV-KF201",
+						name: "강화마루 KF201",
+						category: "마루",
+						location: "2층 쇼케이스",
+						quantity: 85,
+						unit: "박스",
+						minQuantity: 30,
+						qrCode: "INV-KF201-QR",
+						lastUpdated: "2023-09-26",
+						movements: [
+							{
+								id: 1,
+								type: "in",
+								quantity: 100,
+								date: "2023-09-10",
+								location: "3층 창고",
+								notes: "발주 입고",
+							},
+							{
+								id: 2,
+								type: "out",
+								quantity: 15,
+								date: "2023-09-26",
+								location: "2층 쇼케이스",
+								notes: "주문 ORD-20230002",
+							},
+						],
+					},
+					{
+						id: "INV-KF305",
+						name: "강화마루 KF305",
+						category: "마루",
+						location: "3층 창고",
+						quantity: 210,
+						unit: "박스",
+						minQuantity: 50,
+						qrCode: "INV-KF305-QR",
+						lastUpdated: "2023-09-18",
+						movements: [
+							{
+								id: 1,
+								type: "in",
+								quantity: 150,
+								date: "2023-09-05",
+								location: "3층 창고",
+								notes: "발주 입고",
+							},
+							{
+								id: 2,
+								type: "in",
+								quantity: 60,
+								date: "2023-09-18",
+								location: "3층 창고",
+								notes: "발주 입고",
+							},
+						],
+					},
+					{
+						id: "INV-M101",
+						name: "몰딩 M101",
+						category: "몰딩",
+						location: "4층 자재실",
+						quantity: 350,
+						unit: "개",
+						minQuantity: 100,
+						qrCode: "INV-M101-QR",
+						lastUpdated: "2023-09-22",
+						movements: [
+							{
+								id: 1,
+								type: "in",
+								quantity: 300,
+								date: "2023-09-01",
+								location: "4층 자재실",
+								notes: "발주 입고",
+							},
+							{
+								id: 2,
+								type: "in",
+								quantity: 200,
+								date: "2023-09-15",
+								location: "4층 자재실",
+								notes: "발주 입고",
+							},
+							{
+								id: 3,
+								type: "out",
+								quantity: 150,
+								date: "2023-09-22",
+								location: "4층 자재실",
+								notes: "주문 ORD-20230002",
+							},
+						],
+					},
+					{
+						id: "INV-M203",
+						name: "몰딩 M203",
+						category: "몰딩",
+						location: "4층 자재실",
+						quantity: 180,
+						unit: "개",
+						minQuantity: 80,
+						qrCode: "INV-M203-QR",
+						lastUpdated: "2023-09-20",
+						movements: [
+							{
+								id: 1,
+								type: "in",
+								quantity: 200,
+								date: "2023-09-10",
+								location: "4층 자재실",
+								notes: "발주 입고",
+							},
+							{
+								id: 2,
+								type: "out",
+								quantity: 20,
+								date: "2023-09-20",
+								location: "4층 자재실",
+								notes: "주문 ORD-20230001",
+							},
+						],
+					},
+				];
 
-				// Using mock data for demonstration
-				setTimeout(() => {
-					setInventory(
-						inventoryType === "raw-material" ? mockRawMaterials : mockProducts
+				// 특정 자재 상세 조회 시 해당 자재 저장
+				if ((view === "details" || view === "transaction") && itemId) {
+					const foundItem = mockInventoryItems.find(
+						(item) => item.id === itemId
 					);
-					setError(null);
-					setLoading(false);
-				}, 600);
+					if (foundItem) {
+						setSelectedItem(foundItem);
+					} else {
+						setError("요청하신 자재를 찾을 수 없습니다.");
+					}
+				}
+
+				// 모든 자재 데이터 저장
+				setInventoryItems(mockInventoryItems);
+				setLoading(false);
 			} catch (err) {
-				setError("Failed to load inventory data");
+				console.error("자재 데이터 로딩 중 오류:", err);
+				setError("자재 데이터를 불러오는 데 실패했습니다.");
 				setLoading(false);
 			}
 		};
 
-		fetchInventory();
-	}, [inventoryType]);
+		fetchInventoryItems();
+	}, [view, itemId]);
 
-	// Filter inventory data based on search, category, and status
+	// QR 코드 스캔 시뮬레이션
+	const simulateScan = () => {
+		setIsScanning(true);
+
+		// 실제 구현에서는 카메라 스캔 기능 사용
+		// 여기서는 3초 후 목업 QR 코드 결과를 반환하는 시뮬레이션
+		scannerIntervalRef.current = setTimeout(() => {
+			// 랜덤한 자재 선택
+			const randomItem =
+				inventoryItems[Math.floor(Math.random() * inventoryItems.length)];
+			setScannedCode(randomItem.qrCode);
+			setIsScanning(false);
+
+			// QR 코드 스캔 결과 처리
+			handleScannedQRCode(randomItem.qrCode);
+		}, 3000);
+	};
+
+	// QR 코드 스캔 취소
+	const cancelScan = () => {
+		setIsScanning(false);
+		if (scannerIntervalRef.current) {
+			clearTimeout(scannerIntervalRef.current);
+		}
+	};
+
+	// 컴포넌트 언마운트 시 스캔 중지
 	useEffect(() => {
-		if (!inventory || inventory.length === 0) return;
-
-		let filtered = [...inventory];
-
-		// Apply search filter
-		if (searchTerm) {
-			filtered = filtered.filter(
-				(item) =>
-					item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					item.name.toLowerCase().includes(searchTerm.toLowerCase())
-			);
-		}
-
-		// Apply category filter
-		if (categoryFilter !== "all") {
-			filtered = filtered.filter((item) => item.category === categoryFilter);
-		}
-
-		// Apply status filter
-		if (statusFilter !== "all") {
-			filtered = filtered.filter((item) => item.status === statusFilter);
-		}
-
-		setFilteredInventory(filtered);
-
-		// Auto-select first item if available and none selected
-		if (filtered.length > 0 && !selectedItem) {
-			setSelectedItem(filtered[0]);
-		} else if (filtered.length === 0) {
-			setSelectedItem(null);
-		} else if (
-			selectedItem &&
-			!filtered.some((item) => item.id === selectedItem.id)
-		) {
-			// If currently selected item is not in filtered results
-			setSelectedItem(filtered[0]);
-		}
-	}, [searchTerm, categoryFilter, statusFilter, inventory, selectedItem]);
-
-	// Load item history when an item is selected
-	useEffect(() => {
-		if (!selectedItem) return;
-
-		const fetchItemHistory = async () => {
-			setLoadingHistory(true);
-			try {
-				// In a real app, this would be an API call
-				// const response = await api.getInventoryItemHistory(selectedItem.id);
-				// setItemHistory(response.data);
-
-				// Using mock data for demonstration
-				setTimeout(() => {
-					setItemHistory(mockInventoryHistory[selectedItem.id] || []);
-					setLoadingHistory(false);
-				}, 400);
-			} catch (err) {
-				setLoadingHistory(false);
+		return () => {
+			if (scannerIntervalRef.current) {
+				clearTimeout(scannerIntervalRef.current);
 			}
 		};
-
-		fetchItemHistory();
-	}, [selectedItem]);
-
-	// Handle item selection
-	const handleItemSelect = useCallback((item) => {
-		setSelectedItem(item);
 	}, []);
 
-	// Handle search input change
-	const handleSearchChange = (e) => {
-		setSearchTerm(e.target.value);
-	};
+	// QR 코드 스캔 결과 처리
+	const handleScannedQRCode = (qrCode) => {
+		// QR 코드에 맞는 자재 찾기
+		const foundItem = inventoryItems.find((item) => item.qrCode === qrCode);
 
-	// Handle category filter change
-	const handleCategoryFilterChange = (e) => {
-		setCategoryFilter(e.target.value);
-	};
+		if (foundItem) {
+			// 알림 표시
+			showNotification({
+				title: "QR 코드 스캔 성공",
+				message: `${foundItem.name} 자재가 인식되었습니다.`,
+				type: "success",
+			});
 
-	// Handle status filter change
-	const handleStatusFilterChange = (e) => {
-		setStatusFilter(e.target.value);
-	};
-
-	// Format currency for display
-	const formatCurrency = (amount) => {
-		return amount.toLocaleString("ko-KR") + "원";
-	};
-
-	// Get status badge for display
-	const getStatusBadge = (status) => {
-		switch (status) {
-			case "normal":
-				return <span className="status-badge status-normal">정상</span>;
-			case "warning":
-				return <span className="status-badge status-warning">요주의</span>;
-			case "critical":
-				return <span className="status-badge status-critical">부족</span>;
-			default:
-				return <span className="status-badge">{status}</span>;
+			// 해당 자재의 상세 정보로 이동
+			navigate(`/inventory/details/${foundItem.id}`);
+		} else {
+			// 알림 표시
+			showNotification({
+				title: "QR 코드 스캔 실패",
+				message: "인식할 수 없는 QR 코드입니다.",
+				type: "error",
+			});
 		}
 	};
 
-	// Show add item modal
-	const handleAddItem = () => {
-		setShowAddModal(true);
+	// 수동으로 QR 코드 입력
+	const handleManualQRCode = (e) => {
+		e.preventDefault();
+		const manualCode = e.target.elements.manualQrCode.value.trim();
+
+		if (manualCode) {
+			handleScannedQRCode(manualCode);
+		}
 	};
 
-	// Show adjust stock modal
-	const handleAdjustStock = () => {
-		if (!selectedItem) {
-			showNotification({
-				title: "재고 조정 오류",
-				message: "재고를 조정할 항목을 선택해주세요.",
-				type: "warning",
-			});
+	// 입출고 처리 (transaction)
+	const handleTransaction = (e) => {
+		e.preventDefault();
+
+		if (!selectedItem) return;
+
+		// 출고 시 수량 확인
+		if (
+			transactionForm.type === "out" &&
+			transactionForm.quantity > selectedItem.quantity
+		) {
+			alert("출고 수량이 현재 재고보다 많습니다.");
 			return;
 		}
 
-		setShowAdjustModal(true);
-	};
+		// 실제 구현에서는 API 호출로 자재 입출고 처리
+		const newMovement = {
+			id: Date.now(),
+			type: transactionForm.type,
+			quantity: parseInt(transactionForm.quantity),
+			date: new Date().toISOString().split("T")[0],
+			location:
+				transactionForm.location ||
+				(transactionForm.type === "in" ? "입고 위치" : "출고 위치"),
+			notes: transactionForm.notes,
+		};
 
-	// Mock function to adjust stock
-	const adjustStock = (id, quantity, reason) => {
-		// In a real app, this would be an API call
-		// await api.adjustInventoryStock(id, quantity, reason);
+		// 자재 수량 계산
+		const newQuantity =
+			transactionForm.type === "in"
+				? selectedItem.quantity + parseInt(transactionForm.quantity)
+				: selectedItem.quantity - parseInt(transactionForm.quantity);
 
-		const itemIndex = inventory.findIndex((item) => item.id === id);
-		if (itemIndex === -1) return;
+		// 자재 정보 업데이트
+		const updatedItem = {
+			...selectedItem,
+			quantity: newQuantity,
+			lastUpdated: new Date().toISOString().split("T")[0],
+			movements: [newMovement, ...selectedItem.movements],
+		};
 
-		const updatedInventory = [...inventory];
-		const updatedItem = { ...updatedInventory[itemIndex] };
-
-		updatedItem.stock += parseInt(quantity, 10);
-
-		// Update status based on new stock level
-		if (updatedItem.stock <= updatedItem.minStock * 0.5) {
-			updatedItem.status = "critical";
-		} else if (updatedItem.stock <= updatedItem.minStock) {
-			updatedItem.status = "warning";
-		} else {
-			updatedItem.status = "normal";
-		}
-
-		updatedItem.lastUpdated = new Date().toISOString().split("T")[0];
-
-		updatedInventory[itemIndex] = updatedItem;
-		setInventory(updatedInventory);
+		// 상태 업데이트
 		setSelectedItem(updatedItem);
-
-		setShowAdjustModal(false);
-
-		showNotification({
-			title: "재고 조정 완료",
-			message: `${updatedItem.name} 재고가 ${
-				quantity > 0 ? "증가" : "감소"
-			}했습니다.`,
-			type: "success",
-		});
-	};
-
-	// Handle stock adjustment form submission
-	const handleStockAdjustmentSubmit = (e) => {
-		e.preventDefault();
-		const formData = new FormData(e.target);
-		const quantity = formData.get("quantity");
-		const reason = formData.get("reason");
-
-		adjustStock(selectedItem.id, parseInt(quantity, 10), reason);
-	};
-
-	// Handle add item form submission
-	const handleAddItemSubmit = (e) => {
-		e.preventDefault();
-		// Implementation for adding a new inventory item
-		// In a real app, this would be an API call
-
-		setShowAddModal(false);
-
-		showNotification({
-			title: "항목 추가 완료",
-			message: "새로운 재고 항목이 추가되었습니다.",
-			type: "success",
-		});
-	};
-
-	// Render inventory list
-	const renderInventoryList = () => {
-		if (loading) {
-			return (
-				<div className="loading-indicator">재고 정보를 불러오는 중...</div>
-			);
-		}
-
-		if (error) {
-			return <div className="error-message">{error}</div>;
-		}
-
-		if (filteredInventory.length === 0) {
-			return <div className="no-data">검색 결과가 없습니다.</div>;
-		}
-
-		return (
-			<table className="inventory-table">
-				<thead>
-					<tr>
-						<th>코드</th>
-						<th>제품명</th>
-						<th>카테고리</th>
-						<th>재고</th>
-						<th>위치</th>
-						<th>상태</th>
-					</tr>
-				</thead>
-				<tbody>
-					{filteredInventory.map((item) => (
-						<tr
-							key={item.id}
-							className={`inventory-item ${
-								selectedItem?.id === item.id ? "selected" : ""
-							}`}
-							onClick={() => handleItemSelect(item)}>
-							<td>{item.code}</td>
-							<td>{item.name}</td>
-							<td>
-								{categoryOptions[inventoryType].find(
-									(cat) => cat.id === item.category
-								)?.name || item.category}
-							</td>
-							<td>
-								{item.stock} {item.unit}
-							</td>
-							<td>{item.location}</td>
-							<td>{getStatusBadge(item.status)}</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
+		setInventoryItems((prevItems) =>
+			prevItems.map((item) => (item.id === updatedItem.id ? updatedItem : item))
 		);
+
+		// 알림 표시
+		showNotification({
+			title: "입출고 처리 완료",
+			message: `${selectedItem.name} 자재가 ${
+				transactionForm.type === "in" ? "입고" : "출고"
+			} 처리되었습니다.`,
+			type: "success",
+		});
+
+		// 상세 페이지로 리다이렉트
+		navigate(`/inventory/details/${selectedItem.id}`);
 	};
 
-	// Render item details
-	const renderItemDetails = () => {
-		if (!selectedItem) {
-			return (
-				<div className="no-data">상세 정보를 확인하려면 항목을 선택하세요.</div>
-			);
-		}
-
+	// 자재 목록 뷰 렌더링
+	const renderInventoryListView = () => {
 		return (
-			<div className="item-details">
-				<h3 className="details-title">{selectedItem.name}</h3>
+			<>
+				<div className="inventory-header">
+					<h1 className="module-title">자재 관리</h1>
+					<p className="inventory-subtitle">자재 목록 및 관리</p>
 
-				<div className="details-grid">
-					<div className="details-section basic-details">
-						<h4 className="section-subtitle">기본 정보</h4>
-						<div className="details-columns">
-							<div className="details-column">
-								<div className="details-item">
-									<div className="details-label">코드</div>
-									<div className="details-value">{selectedItem.code}</div>
-								</div>
-								<div className="details-item">
-									<div className="details-label">제품명</div>
-									<div className="details-value">{selectedItem.name}</div>
-								</div>
-								<div className="details-item">
-									<div className="details-label">카테고리</div>
-									<div className="details-value">
-										{categoryOptions[inventoryType].find(
-											(cat) => cat.id === selectedItem.category
-										)?.name || selectedItem.category}
-									</div>
-								</div>
-								<div className="details-item">
-									<div className="details-label">설명</div>
-									<div className="details-value">
-										{selectedItem.description}
-									</div>
-								</div>
-							</div>
-
-							<div className="details-column">
-								<div className="details-item">
-									<div className="details-label">단가</div>
-									<div className="details-value">
-										{formatCurrency(selectedItem.price)}
-									</div>
-								</div>
-								<div className="details-item">
-									<div className="details-label">위치</div>
-									<div className="details-value">{selectedItem.location}</div>
-								</div>
-								<div className="details-item">
-									<div className="details-label">최종 업데이트</div>
-									<div className="details-value">
-										{selectedItem.lastUpdated}
-									</div>
-								</div>
-								{inventoryType === "raw-material" && (
-									<div className="details-item">
-										<div className="details-label">공급업체</div>
-										<div className="details-value">{selectedItem.supplier}</div>
-									</div>
-								)}
-							</div>
-						</div>
-					</div>
-
-					<div className="details-section stock-details">
-						<h4 className="section-subtitle">재고 정보</h4>
-						<div className="stock-info">
-							<div className="stock-metric">
-								<div className="stock-label">현재 재고</div>
-								<div className={`stock-value status-${selectedItem.status}`}>
-									{selectedItem.stock} {selectedItem.unit}
-								</div>
-							</div>
-							<div className="stock-metric">
-								<div className="stock-label">최소 재고</div>
-								<div className="stock-value">
-									{selectedItem.minStock} {selectedItem.unit}
-								</div>
-							</div>
-							<div className="stock-metric">
-								<div className="stock-label">최대 재고</div>
-								<div className="stock-value">
-									{selectedItem.maxStock} {selectedItem.unit}
-								</div>
-							</div>
-							<div className="stock-metric">
-								<div className="stock-label">상태</div>
-								<div className="stock-value">
-									{getStatusBadge(selectedItem.status)}
-								</div>
-							</div>
-						</div>
-
-						<div className="stock-chart">
-							<div className="stock-level-container">
-								<div
-									className="level-indicator min-level"
-									style={{
-										left: `${
-											(selectedItem.minStock / selectedItem.maxStock) * 100
-										}%`,
-									}}
-								/>
-								<div
-									className={`level-bar status-${selectedItem.status}`}
-									style={{
-										width: `${
-											(selectedItem.stock / selectedItem.maxStock) * 100
-										}%`,
-									}}
-								/>
-							</div>
-							<div className="level-labels">
-								<div className="level-label">0</div>
-								<div className="level-label min-label">
-									{selectedItem.minStock} (최소)
-								</div>
-								<div className="level-label max-label">
-									{selectedItem.maxStock} (최대)
-								</div>
-							</div>
-						</div>
+					<div className="tab-navigation">
+						<button
+							className={`tab-button ${activeTab === "all" ? "active" : ""}`}
+							onClick={() => setActiveTab("all")}>
+							전체 자재
+						</button>
+						<button
+							className={`tab-button ${
+								activeTab === "low-stock" ? "active" : ""
+							}`}
+							onClick={() => setActiveTab("low-stock")}>
+							재고 부족
+						</button>
 					</div>
 				</div>
 
-				<div className="action-buttons">
-					<button
-						className="action-button"
-						onClick={handleAdjustStock}>
-						재고 조정
-					</button>
-					<button className="action-button">
-						{inventoryType === "raw-material" ? "발주 요청" : "생산 계획"}
-					</button>
-					<button className="action-button">QR 코드 생성</button>
-					<button className="action-button">상세 분석</button>
-				</div>
+				<div className="inventory-list-section">
+					<div className="section-title">
+						<span>자재 목록</span>
+						<span className="item-count">{inventoryItems.length}개 항목</span>
+					</div>
 
-				<div className="item-history">
-					<h4 className="section-subtitle">재고 이력</h4>
-					{loadingHistory ? (
-						<div className="loading-indicator">이력을 불러오는 중...</div>
-					) : itemHistory.length === 0 ? (
-						<div className="no-data">재고 이력이 없습니다.</div>
-					) : (
-						<table className="history-table">
+					{loading ? (
+						<div className="loading-indicator">
+							자재 데이터를 불러오는 중...
+						</div>
+					) : error ? (
+						<div className="error-message">{error}</div>
+					) : inventoryItems.length > 0 ? (
+						<table className="inventory-table">
 							<thead>
 								<tr>
-									<th>일자</th>
-									<th>유형</th>
+									<th>자재번호</th>
+									<th>자재명</th>
+									<th>카테고리</th>
+									<th>위치</th>
 									<th>수량</th>
-									<th>잔고</th>
-									<th>참조</th>
-									<th>담당자</th>
-									<th>비고</th>
+									<th>작업</th>
 								</tr>
 							</thead>
 							<tbody>
-								{itemHistory.map((history) => (
-									<tr key={history.id}>
-										<td>{history.date}</td>
-										<td>{history.type}</td>
-										<td
-											className={
-												history.quantity > 0 ? "increase" : "decrease"
-											}>
-											{history.quantity > 0 ? "+" : ""}
-											{history.quantity} {selectedItem.unit}
-										</td>
+								{inventoryItems.map((item) => (
+									<tr key={item.id}>
+										<td>{item.id}</td>
+										<td>{item.name}</td>
+										<td>{item.category}</td>
+										<td>{item.location}</td>
 										<td>
-											{history.balance} {selectedItem.unit}
+											<span
+												className={`quantity-badge ${getQuantityBadgeClass(
+													item
+												)}`}>
+												{item.quantity} {item.unit}
+											</span>
 										</td>
-										<td>{history.reference}</td>
-										<td>{history.user}</td>
-										<td>{history.notes}</td>
+										<td className="action-buttons">
+											<button
+												className="btn btn-secondary"
+												onClick={() =>
+													navigate(`/inventory/details/${item.id}`)
+												}>
+												상세보기
+											</button>
+											<button
+												className="btn btn-primary"
+												onClick={() =>
+													navigate(`/inventory/transaction/${item.id}`)
+												}>
+												입출고 처리
+											</button>
+										</td>
 									</tr>
 								))}
 							</tbody>
 						</table>
+					) : (
+						<div className="no-data">등록된 자재가 없습니다.</div>
 					)}
 				</div>
+			</>
+		);
+	};
+
+	// QR 코드 스캔 뷰 렌더링
+	const renderQRScanView = () => {
+		return (
+			<div className="qr-scanner-container">
+				<h1 className="scanner-title">QR 코드 스캔</h1>
+				<p className="scanner-description">
+					자재에 부착된 QR 코드를 스캔하여 자재 정보를 확인하세요.
+				</p>
+
+				<div className="scanner-area">
+					{isScanning ? (
+						<div className="scanner-placeholder">
+							<i className="ri-loader-4-line ri-spin"></i>
+							<span>스캔 중...</span>
+						</div>
+					) : (
+						<div className="scanner-placeholder">
+							<i className="ri-qr-code-line"></i>
+							<span>QR 코드를 스캔하세요</span>
+						</div>
+					)}
+				</div>
+
+				<div className="scanner-action">
+					<button
+						className="btn btn-primary"
+						onClick={simulateScan}
+						disabled={isScanning}>
+						스캔 시작
+					</button>
+					<button
+						className="btn btn-secondary"
+						onClick={cancelScan}
+						disabled={!isScanning}>
+						취소
+					</button>
+				</div>
+
+				<form
+					onSubmit={handleManualQRCode}
+					style={{ marginTop: "20px" }}>
+					<input
+						type="text"
+						name="manualQrCode"
+						placeholder="수동으로 QR 코드 입력"
+						className="form-input"
+					/>
+					<button
+						type="submit"
+						className="btn btn-secondary">
+						확인
+					</button>
+				</form>
 			</div>
 		);
 	};
 
-	// Render stock adjustment modal
-	const renderAdjustStockModal = () => {
-		if (!showAdjustModal || !selectedItem) return null;
+	// 자재 상세 뷰 렌더링
+	const renderInventoryDetailsView = () => {
+		if (loading) {
+			return (
+				<div className="loading-indicator">자재 정보를 불러오는 중...</div>
+			);
+		}
+
+		if (error || !selectedItem) {
+			return (
+				<div className="error-message">
+					{error || "자재 정보를 찾을 수 없습니다."}
+				</div>
+			);
+		}
 
 		return (
-			<div className="modal-overlay">
-				<div className="modal">
-					<div className="modal-header">
-						<h3 className="modal-title">재고 조정 - {selectedItem.name}</h3>
-						<button
-							className="modal-close"
-							onClick={() => setShowAdjustModal(false)}
-							aria-label="Close modal">
-							×
-						</button>
+			<div className="inventory-details">
+				<div className="inventory-details-header">
+					<h1 className="module-title">자재 상세 정보</h1>
+					<div className="qr-code-display">
+						<QRCodeCanvas
+							value={selectedItem.qrCode}
+							size={100}
+						/>
+						<span>QR 코드</span>
 					</div>
-					<form
-						onSubmit={handleStockAdjustmentSubmit}
-						className="modal-body">
-						<div className="form-group">
-							<label
-								htmlFor="current-stock"
-								className="form-label">
-								현재 재고
-							</label>
-							<input
-								type="text"
-								id="current-stock"
-								className="form-control"
-								value={`${selectedItem.stock} ${selectedItem.unit}`}
-								readOnly
-							/>
-						</div>
+				</div>
 
-						<div className="form-group">
-							<label
-								htmlFor="quantity"
-								className="form-label">
-								조정 수량 (+ 증가, - 감소)
-							</label>
-							<input
-								type="number"
-								id="quantity"
-								name="quantity"
-								className="form-control"
-								required
-							/>
-							<div className="form-hint">예: +10 (입고), -5 (출고)</div>
-						</div>
+				<div className="divider"></div>
 
-						<div className="form-group">
-							<label
-								htmlFor="reason"
-								className="form-label">
-								조정 사유
-							</label>
-							<select
-								id="reason"
-								name="reason"
-								className="form-control"
-								required>
-								<option value="">조정 사유 선택</option>
-								<option value="purchase">구매/입고</option>
-								<option value="production">생산 투입</option>
-								<option value="return">반품</option>
-								<option value="damaged">손상/폐기</option>
-								<option value="recount">재고 실사</option>
-								<option value="other">기타</option>
-							</select>
+				<div className="details-row">
+					<div className="details-col">
+						<h2 className="form-section-title">기본 정보</h2>
+						<div className="details-group">
+							<div className="details-label">자재명</div>
+							<div className="details-value">{selectedItem.name}</div>
 						</div>
+						<div className="details-group">
+							<div className="details-label">카테고리</div>
+							<div className="details-value">{selectedItem.category}</div>
+						</div>
+						<div className="details-group">
+							<div className="details-label">위치</div>
+							<div className="details-value">{selectedItem.location}</div>
+						</div>
+					</div>
 
-						<div className="form-group">
-							<label
-								htmlFor="notes"
-								className="form-label">
-								상세 내용
-							</label>
-							<textarea
-								id="notes"
-								name="notes"
-								className="form-control"
-								rows="3"
-								placeholder="조정에 대한 상세 내용을 입력하세요"></textarea>
+					<div className="details-col">
+						<h2 className="form-section-title">재고 정보</h2>
+						<div className="details-group">
+							<div className="details-label">현재 수량</div>
+							<div className="details-value">
+								<span
+									className={`quantity-badge ${getQuantityBadgeClass(
+										selectedItem
+									)}`}>
+									{selectedItem.quantity} {selectedItem.unit}
+								</span>
+							</div>
 						</div>
+						<div className="details-group">
+							<div className="details-label">최소 수량</div>
+							<div className="details-value">
+								{selectedItem.minQuantity} {selectedItem.unit}
+							</div>
+						</div>
+						<div className="details-group">
+							<div className="details-label">마지막 업데이트</div>
+							<div className="details-value">
+								{formatDate(selectedItem.lastUpdated)}
+							</div>
+						</div>
+					</div>
+				</div>
 
-						<div className="modal-footer">
-							<button
-								type="submit"
-								className="btn btn-primary">
-								재고 조정
-							</button>
-							<button
-								type="button"
-								className="btn btn-secondary"
-								onClick={() => setShowAdjustModal(false)}>
-								취소
-							</button>
-						</div>
-					</form>
+				<div className="divider"></div>
+
+				<div className="movement-history">
+					<h2 className="form-section-title">입출고 이력</h2>
+					<table className="movement-table">
+						<thead>
+							<tr>
+								<th>날짜</th>
+								<th>유형</th>
+								<th>수량</th>
+								<th>위치</th>
+								<th>비고</th>
+							</tr>
+						</thead>
+						<tbody>
+							{selectedItem.movements.map((movement) => (
+								<tr key={movement.id}>
+									<td>{formatDate(movement.date)}</td>
+									<td>
+										<span
+											className={`status-badge ${
+												movement.type === "in"
+													? "status-completed"
+													: "status-cancelled"
+											}`}>
+											{movement.type === "in" ? "입고" : "출고"}
+										</span>
+									</td>
+									<td>
+										{movement.quantity} {selectedItem.unit}
+									</td>
+									<td>{movement.location}</td>
+									<td>{movement.notes}</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+
+				<div className="divider"></div>
+
+				<div
+					style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+					<Link to="/inventory/list">
+						<button className="btn btn-secondary">목록으로</button>
+					</Link>
+					<Link to={`/inventory/transaction/${selectedItem.id}`}>
+						<button className="btn btn-primary">입출고 처리</button>
+					</Link>
 				</div>
 			</div>
 		);
 	};
 
-	// Render add item modal
-	const renderAddItemModal = () => {
-		if (!showAddModal) return null;
+	// 자재 입출고 뷰 렌더링
+	const renderInventoryTransactionView = () => {
+		if (loading) {
+			return (
+				<div className="loading-indicator">자재 정보를 불러오는 중...</div>
+			);
+		}
+
+		if (error || !selectedItem) {
+			return (
+				<div className="error-message">
+					{error || "자재 정보를 찾을 수 없습니다."}
+				</div>
+			);
+		}
 
 		return (
-			<div className="modal-overlay">
-				<div className="modal">
-					<div className="modal-header">
-						<h3 className="modal-title">
-							{inventoryType === "raw-material"
-								? "새 원자재 등록"
-								: "새 제품 등록"}
-						</h3>
-						<button
-							className="modal-close"
-							onClick={() => setShowAddModal(false)}
-							aria-label="Close modal">
-							×
-						</button>
+			<div className="transaction-form">
+				<h1 className="module-title">자재 입출고 처리</h1>
+				<p className="inventory-subtitle">
+					{selectedItem.name} ({selectedItem.id})
+				</p>
+
+				<div
+					className="details-group"
+					style={{ marginBottom: "20px" }}>
+					<div className="details-label">현재 재고</div>
+					<div className="details-value">
+						<span
+							className={`quantity-badge ${getQuantityBadgeClass(
+								selectedItem
+							)}`}>
+							{selectedItem.quantity} {selectedItem.unit}
+						</span>
 					</div>
-					<form
-						onSubmit={handleAddItemSubmit}
-						className="modal-body">
+				</div>
+
+				<form onSubmit={handleTransaction}>
+					<div className="form-section">
+						<h2 className="form-section-title">입출고 정보</h2>
 						<div className="form-row">
-							<div className="form-col">
-								<div className="form-group">
-									<label
-										htmlFor="item-code"
-										className="form-label">
-										코드
-									</label>
-									<input
-										type="text"
-										id="item-code"
-										name="code"
-										className="form-control"
-										required
-									/>
-								</div>
-							</div>
-							<div className="form-col">
-								<div className="form-group">
-									<label
-										htmlFor="item-category"
-										className="form-label">
-										카테고리
-									</label>
-									<select
-										id="item-category"
-										name="category"
-										className="form-control"
-										required>
-										<option value="">카테고리 선택</option>
-										{categoryOptions[inventoryType]
-											.filter((cat) => cat.id !== "all")
-											.map((category) => (
-												<option
-													key={category.id}
-													value={category.id}>
-													{category.name}
-												</option>
-											))}
-									</select>
-								</div>
-							</div>
-						</div>
-
-						<div className="form-group">
-							<label
-								htmlFor="item-name"
-								className="form-label">
-								이름
-							</label>
-							<input
-								type="text"
-								id="item-name"
-								name="name"
-								className="form-control"
-								required
-							/>
-						</div>
-
-						<div className="form-group">
-							<label
-								htmlFor="item-description"
-								className="form-label">
-								설명
-							</label>
-							<textarea
-								id="item-description"
-								name="description"
-								className="form-control"
-								rows="2"></textarea>
-						</div>
-
-						<div className="form-row">
-							<div className="form-col">
-								<div className="form-group">
-									<label
-										htmlFor="item-stock"
-										className="form-label">
-										초기 재고
-									</label>
-									<input
-										type="number"
-										id="item-stock"
-										name="stock"
-										className="form-control"
-										required
-										min="0"
-									/>
-								</div>
-							</div>
-							<div className="form-col">
-								<div className="form-group">
-									<label
-										htmlFor="item-unit"
-										className="form-label">
-										단위
-									</label>
-									<input
-										type="text"
-										id="item-unit"
-										name="unit"
-										className="form-control"
-										required
-										placeholder="장, 개, 통 등"
-									/>
-								</div>
-							</div>
-						</div>
-
-						<div className="form-row">
-							<div className="form-col">
-								<div className="form-group">
-									<label
-										htmlFor="item-min-stock"
-										className="form-label">
-										최소 재고
-									</label>
-									<input
-										type="number"
-										id="item-min-stock"
-										name="minStock"
-										className="form-control"
-										required
-										min="0"
-									/>
-								</div>
-							</div>
-							<div className="form-col">
-								<div className="form-group">
-									<label
-										htmlFor="item-max-stock"
-										className="form-label">
-										최대 재고
-									</label>
-									<input
-										type="number"
-										id="item-max-stock"
-										name="maxStock"
-										className="form-control"
-										required
-										min="0"
-									/>
-								</div>
-							</div>
-						</div>
-
-						<div className="form-row">
-							<div className="form-col">
-								<div className="form-group">
-									<label
-										htmlFor="item-price"
-										className="form-label">
-										단가
-									</label>
-									<input
-										type="number"
-										id="item-price"
-										name="price"
-										className="form-control"
-										required
-										min="0"
-									/>
-								</div>
-							</div>
-							<div className="form-col">
-								<div className="form-group">
-									<label
-										htmlFor="item-location"
-										className="form-label">
-										보관 위치
-									</label>
-									<input
-										type="text"
-										id="item-location"
-										name="location"
-										className="form-control"
-										required
-									/>
-								</div>
-							</div>
-						</div>
-
-						{inventoryType === "raw-material" && (
 							<div className="form-group">
-								<label
-									htmlFor="item-supplier"
-									className="form-label">
-									공급업체
-								</label>
+								<label className="form-label">처리 유형 *</label>
+								<select
+									className="form-select"
+									value={transactionForm.type}
+									onChange={(e) =>
+										setTransactionForm({
+											...transactionForm,
+											type: e.target.value,
+										})
+									}
+									required>
+									<option value="in">입고</option>
+									<option value="out">출고</option>
+								</select>
+							</div>
+							<div className="form-group">
+								<label className="form-label">수량 *</label>
 								<input
-									type="text"
-									id="item-supplier"
-									name="supplier"
-									className="form-control"
+									type="number"
+									className="form-input"
+									value={transactionForm.quantity}
+									onChange={(e) =>
+										setTransactionForm({
+											...transactionForm,
+											quantity: Math.max(1, parseInt(e.target.value) || 0),
+										})
+									}
+									min="1"
 									required
 								/>
 							</div>
-						)}
+						</div>
+						<div className="form-row">
+							<div className="form-group">
+								<label className="form-label">위치</label>
+								<input
+									type="text"
+									className="form-input"
+									value={transactionForm.location}
+									onChange={(e) =>
+										setTransactionForm({
+											...transactionForm,
+											location: e.target.value,
+										})
+									}
+									placeholder={
+										transactionForm.type === "in" ? "입고 위치" : "출고 위치"
+									}
+								/>
+							</div>
+						</div>
+						<div className="form-row">
+							<div className="form-group">
+								<label className="form-label">비고</label>
+								<textarea
+									className="form-textarea"
+									value={transactionForm.notes}
+									onChange={(e) =>
+										setTransactionForm({
+											...transactionForm,
+											notes: e.target.value,
+										})
+									}
+									placeholder="추가 정보 입력"
+								/>
+							</div>
+						</div>
+					</div>
 
-						<div className="modal-footer">
-							<button
-								type="submit"
-								className="btn btn-primary">
-								등록
-							</button>
+					<div
+						className="form-section"
+						style={{
+							display: "flex",
+							gap: "10px",
+							justifyContent: "flex-end",
+						}}>
+						<Link to={`/inventory/details/${selectedItem.id}`}>
 							<button
 								type="button"
-								className="btn btn-secondary"
-								onClick={() => setShowAddModal(false)}>
+								className="btn btn-secondary">
 								취소
 							</button>
-						</div>
-					</form>
-				</div>
+						</Link>
+						<button
+							type="submit"
+							className="btn btn-primary">
+							{transactionForm.type === "in" ? "입고" : "출고"} 처리
+						</button>
+					</div>
+				</form>
 			</div>
 		);
 	};
 
-	return (
-		<div className="inventory-management">
-			<div className="inventory-header">
-				<h2 className="page-title">
-					{inventoryType === "raw-material"
-						? "원자재 재고 관리"
-						: "제품 재고 관리"}
-				</h2>
+	// 현재 뷰에 맞는 컴포넌트 렌더링
+	const renderContent = () => {
+		switch (view) {
+			case "list":
+				return renderInventoryListView();
+			case "scan":
+				return renderQRScanView();
+			case "details":
+				return renderInventoryDetailsView();
+			case "transaction":
+				return renderInventoryTransactionView();
+			default:
+				return renderInventoryListView();
+		}
+	};
 
-				<div className="inventory-filters">
-					<div className="search-form">
-						<input
-							type="text"
-							className="search-input"
-							placeholder="코드 또는 이름으로 검색"
-							value={searchTerm}
-							onChange={handleSearchChange}
-						/>
-					</div>
-
-					<div className="filter-selects">
-						<div className="filter-group">
-							<label htmlFor="category-filter">카테고리:</label>
-							<select
-								id="category-filter"
-								className="filter-select"
-								value={categoryFilter}
-								onChange={handleCategoryFilterChange}>
-								{categoryOptions[inventoryType].map((option) => (
-									<option
-										key={option.id}
-										value={option.id}>
-										{option.name}
-									</option>
-								))}
-							</select>
-						</div>
-
-						<div className="filter-group">
-							<label htmlFor="status-filter">상태:</label>
-							<select
-								id="status-filter"
-								className="filter-select"
-								value={statusFilter}
-								onChange={handleStatusFilterChange}>
-								{statusOptions.map((option) => (
-									<option
-										key={option.id}
-										value={option.id}>
-										{option.name}
-									</option>
-								))}
-							</select>
-						</div>
-					</div>
-
-					<div className="inventory-actions">
-						<button
-							onClick={handleAddItem}
-							className="action-button add-button">
-							{inventoryType === "raw-material" ? "원자재 추가" : "제품 추가"}
-						</button>
-					</div>
-				</div>
-			</div>
-
-			<div className="inventory-content">
-				<div className="inventory-list-section">
-					<h3 className="section-title">
-						{inventoryType === "raw-material" ? "원자재 목록" : "제품 목록"}
-						<span className="item-count">
-							({filteredInventory.length}/{inventory.length})
-						</span>
-					</h3>
-					{renderInventoryList()}
-				</div>
-
-				<div className="inventory-details-section">{renderItemDetails()}</div>
-			</div>
-
-			{renderAdjustStockModal()}
-			{renderAddItemModal()}
-		</div>
-	);
-};
-
-InventoryManagement.propTypes = {
-	inventoryType: PropTypes.oneOf(["raw-material", "product"]),
+	return <div className="inventory-management">{renderContent()}</div>;
 };
 
 export default InventoryManagement;

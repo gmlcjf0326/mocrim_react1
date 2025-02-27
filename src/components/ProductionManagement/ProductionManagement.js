@@ -1,1302 +1,1318 @@
-import React, { useState, useEffect, useCallback } from "react";
-import PropTypes from "prop-types";
+import React, { useState, useEffect } from "react";
 import "./ProductionManagement.css";
 
-/**
- * ProductionManagement Component
- *
- * A comprehensive component for managing production processes, including
- * in-house manufacturing at WoodEsty and outsourced processing at partner facilities.
- */
-const ProductionManagement = ({ initialProductionType = "woodesty" }) => {
-	// State management
-	const [productionType, setProductionType] = useState(initialProductionType);
-	const [productionOrders, setProductionOrders] = useState([]);
-	const [filteredOrders, setFilteredOrders] = useState([]);
-	const [selectedOrder, setSelectedOrder] = useState(null);
-	const [searchTerm, setSearchTerm] = useState("");
-	const [statusFilter, setStatusFilter] = useState("all");
-	const [dateRange, setDateRange] = useState({
-		start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-			.toISOString()
-			.split("T")[0], // 7 days ago
-		end: new Date().toISOString().split("T")[0], // today
+const ProductionManagement = () => {
+	// 상태 관리
+	const [activeTab, setActiveTab] = useState("plans");
+	const [productionPlans, setProductionPlans] = useState([]);
+	const [selectedPlan, setSelectedPlan] = useState(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
+	const [showModal, setShowModal] = useState(false);
+	const [modalType, setModalType] = useState("");
+	const [filterDate, setFilterDate] = useState({
+		startDate: "",
+		endDate: "",
 	});
-	const [orderDetails, setOrderDetails] = useState(null);
-	const [materials, setMaterials] = useState([]);
-	const [processorInventory, setProcessorInventory] = useState([]);
-	const [loading, setLoading] = useState({
-		orders: false,
-		details: false,
-		materials: false,
-		inventory: false,
-	});
-	const [error, setError] = useState({
-		orders: null,
-		details: null,
-		materials: null,
-		inventory: null,
-	});
-	const [showNewOrderModal, setShowNewOrderModal] = useState(false);
-	const [newOrderForm, setNewOrderForm] = useState({
-		productType: "",
-		quantity: "",
-		dueDate: "",
-		processor: productionType,
-		materials: [],
-	});
+	const [filterStatus, setFilterStatus] = useState("all");
+	const [searchQuery, setSearchQuery] = useState("");
 
-	// Mock data for production orders
-	const mockProductionOrders = {
-		woodesty: [
-			{
-				id: 1,
-				orderNumber: "PR-2025022501",
-				productType: "3808-3/양면 E0 18mm",
-				quantity: 120,
-				orderDate: "2025-02-25",
-				dueDate: "2025-02-28",
-				status: "processing",
-				customer: "우성목재",
-			},
-			{
-				id: 2,
-				orderNumber: "PR-2025022401",
-				productType: "UV무늬목 15mm",
-				quantity: 80,
-				orderDate: "2025-02-24",
-				dueDate: "2025-02-27",
-				status: "completed",
-				customer: "대림가구",
-			},
-			{
-				id: 3,
-				orderNumber: "PR-2025022301",
-				productType: "3808-3/양면 E0 18mm",
-				quantity: 100,
-				orderDate: "2025-02-23",
-				dueDate: "2025-02-26",
-				status: "completed",
-				customer: "LG하우시스",
-			},
-		],
-		outsourced: [
-			{
-				id: 4,
-				orderNumber: "PR-2025022502",
-				productType: "방염합판 9mm",
-				quantity: 200,
-				orderDate: "2025-02-25",
-				dueDate: "2025-03-02",
-				status: "processing",
-				processor: "A임가공",
-				customer: "삼성인테리어",
-			},
-			{
-				id: 5,
-				orderNumber: "PR-2025022402",
-				productType: "방염합판 9mm",
-				quantity: 150,
-				orderDate: "2025-02-24",
-				dueDate: "2025-03-01",
-				status: "processing",
-				processor: "A임가공",
-				customer: "LG하우시스",
-			},
-			{
-				id: 6,
-				orderNumber: "PR-2025022302",
-				productType: "PB E1 양면",
-				quantity: 180,
-				orderDate: "2025-02-23",
-				dueDate: "2025-02-28",
-				status: "completed",
-				processor: "B임가공",
-				customer: "현대리빙",
-			},
-		],
-		daehwadong: [
-			{
-				id: 7,
-				orderNumber: "PR-2025022503",
-				productType: "씽크대문짝 W600",
-				quantity: 35,
-				orderDate: "2025-02-25",
-				dueDate: "2025-02-27",
-				status: "pending",
-				customer: "대림가구",
-			},
-			{
-				id: 8,
-				orderNumber: "PR-2025022303",
-				productType: "씽크대문짝 W450",
-				quantity: 50,
-				orderDate: "2025-02-23",
-				dueDate: "2025-02-26",
-				status: "completed",
-				customer: "현대리빙",
-			},
-		],
-	};
-
-	// Mock data for order details
-	const mockOrderDetails = {
-		1: {
-			id: 1,
-			orderNumber: "PR-2025022501",
-			productType: "3808-3/양면 E0 18mm",
-			category: "laminated-board",
-			quantity: 120,
-			unit: "장",
-			orderDate: "2025-02-25",
-			dueDate: "2025-02-28",
-			status: "processing",
-			customer: "우성목재",
-			customerContact: "042-123-4567",
-			deliveryAddress: "대전시 서구 갈마동 123",
-			specialInstructions: "모서리 마감 처리 필요",
-			assignedStaff: "김생산",
-			estimatedCompletionTime: "2025-02-27 14:00",
-			productionStage: "코팅",
-			qualityCheck: false,
-			packagingRequirements: "표준 포장",
-			materials: [
-				{
-					id: 1,
-					code: "RM-1001",
-					name: "PB E0 18mm",
-					quantity: 120,
-					unit: "장",
-					status: "allocated",
-				},
-				{
-					id: 2,
-					code: "RM-2001",
-					name: "TL-400(친환경)",
-					quantity: 43.2,
-					unit: "통",
-					status: "allocated",
-				},
-				{
-					id: 3,
-					code: "RM-3001",
-					name: "3808-3(DH-JO-11) O/L",
-					quantity: 240,
-					unit: "장",
-					status: "allocated",
-				},
-			],
-			history: [
-				{
-					id: 1,
-					date: "2025-02-25 09:30",
-					staff: "이지원",
-					stage: "접수",
-					notes: "생산 주문 접수",
-				},
-				{
-					id: 2,
-					date: "2025-02-25 10:15",
-					staff: "김생산",
-					stage: "자재확인",
-					notes: "원자재 할당 완료",
-				},
-				{
-					id: 3,
-					date: "2025-02-25 11:00",
-					staff: "김생산",
-					stage: "생산시작",
-					notes: "원목 재단 작업 시작",
-				},
-				{
-					id: 4,
-					date: "2025-02-25 15:30",
-					staff: "김생산",
-					stage: "코팅",
-					notes: "양면 코팅 작업 중",
-				},
-			],
-		},
-		4: {
-			id: 4,
-			orderNumber: "PR-2025022502",
-			productType: "방염합판 9mm",
-			category: "fire-resistant-board",
-			quantity: 200,
-			unit: "장",
-			orderDate: "2025-02-25",
-			dueDate: "2025-03-02",
-			status: "processing",
-			processor: "A임가공",
-			processorContact: "031-456-7890",
-			processorAddress: "경기도 시흥시 공단로 123",
-			customer: "삼성인테리어",
-			customerContact: "02-345-6789",
-			deliveryAddress: "서울시 강남구 삼성동 456",
-			specialInstructions: "방염 처리 필수",
-			assignedStaff: "박외주",
-			estimatedCompletionTime: "2025-03-01 16:00",
-			productionStage: "생산중",
-			qualityCheck: false,
-			packagingRequirements: "방수 포장",
-			materials: [
-				{
-					id: 4,
-					code: "RM-1003",
-					name: "PB 9mm",
-					quantity: 200,
-					unit: "장",
-					status: "allocated",
-				},
-				{
-					id: 5,
-					code: "RM-2002",
-					name: "방염제 FR-100",
-					quantity: 40,
-					unit: "통",
-					status: "allocated",
-				},
-			],
-			history: [
-				{
-					id: 5,
-					date: "2025-02-25 10:00",
-					staff: "박외주",
-					stage: "접수",
-					notes: "외주 생산 주문 접수",
-				},
-				{
-					id: 6,
-					date: "2025-02-25 11:30",
-					staff: "박외주",
-					stage: "자재배분",
-					notes: "A임가공업체에 원자재 배분 완료",
-				},
-				{
-					id: 7,
-					date: "2025-02-25 14:00",
-					staff: "김임가",
-					stage: "생산시작",
-					notes: "A임가공업체 생산 시작",
-				},
-			],
-		},
-		7: {
-			id: 7,
-			orderNumber: "PR-2025022503",
-			productType: "씽크대문짝 W600",
-			category: "door",
-			quantity: 35,
-			unit: "개",
-			orderDate: "2025-02-25",
-			dueDate: "2025-02-27",
-			status: "pending",
-			customer: "대림가구",
-			customerContact: "02-567-8901",
-			deliveryAddress: "서울시 구로구 디지털로 789",
-			specialInstructions: "손잡이 구멍 없이 제작",
-			assignedStaff: "최문짝",
-			productionStage: "대기중",
-			qualityCheck: false,
-			packagingRequirements: "개별 포장",
-			materials: [
-				{
-					id: 6,
-					code: "RM-1004",
-					name: "MDF 18mm",
-					quantity: 35,
-					unit: "장",
-					status: "pending",
-				},
-				{
-					id: 7,
-					code: "RM-3002",
-					name: "백색 시트지",
-					quantity: 70,
-					unit: "장",
-					status: "pending",
-				},
-			],
-			history: [
-				{
-					id: 8,
-					date: "2025-02-25 11:00",
-					staff: "최문짝",
-					stage: "접수",
-					notes: "문짝 생산 주문 접수",
-				},
-			],
-		},
-	};
-
-	// Mock data for materials
-	const mockMaterials = {
-		woodesty: [
-			{
-				id: 1,
-				code: "RM-1001",
-				name: "PB E0 18mm",
-				stock: 850,
-				unit: "장",
-				minStock: 500,
-				status: "normal",
-			},
-			{
-				id: 2,
-				code: "RM-2001",
-				name: "TL-400(친환경)",
-				stock: 120,
-				unit: "통",
-				minStock: 100,
-				status: "normal",
-			},
-			{
-				id: 3,
-				code: "RM-3001",
-				name: "3808-3(DH-JO-11) O/L",
-				stock: 150,
-				unit: "장",
-				minStock: 200,
-				status: "warning",
-			},
-		],
-		outsourced: {
-			A임가공: [
-				{
-					id: 4,
-					code: "RM-1003",
-					name: "PB 9mm",
-					stock: 200,
-					unit: "장",
-					minStock: 150,
-					status: "normal",
-				},
-				{
-					id: 5,
-					code: "RM-2002",
-					name: "방염제 FR-100",
-					stock: 40,
-					unit: "통",
-					minStock: 30,
-					status: "normal",
-				},
-			],
-			B임가공: [
-				{
-					id: 8,
-					code: "RM-1002",
-					name: "PB E1 15mm",
-					stock: 120,
-					unit: "장",
-					minStock: 100,
-					status: "normal",
-				},
-				{
-					id: 9,
-					code: "RM-3003",
-					name: "UV코팅지",
-					stock: 80,
-					unit: "장",
-					minStock: 100,
-					status: "warning",
-				},
-			],
-		},
-		daehwadong: [
-			{
-				id: 6,
-				code: "RM-1004",
-				name: "MDF 18mm",
-				stock: 150,
-				unit: "장",
-				minStock: 100,
-				status: "normal",
-			},
-			{
-				id: 7,
-				code: "RM-3002",
-				name: "백색 시트지",
-				stock: 300,
-				unit: "장",
-				minStock: 200,
-				status: "normal",
-			},
-		],
-	};
-
-	// Status options for filtering
-	const statusOptions = [
-		{ id: "all", name: "전체" },
-		{ id: "pending", name: "대기중" },
-		{ id: "processing", name: "작업중" },
-		{ id: "completed", name: "완료" },
-	];
-
-	// Production type options
-	const productionTypeOptions = [
-		{ id: "woodesty", name: "우드에스티" },
-		{ id: "outsourced", name: "외부임가공" },
-		{ id: "daehwadong", name: "대화동공장" },
-	];
-
-	// Load production orders based on production type
+	// 생산 계획 데이터 가져오기 (모의 데이터)
 	useEffect(() => {
-		const fetchProductionOrders = async () => {
-			setLoading((prev) => ({ ...prev, orders: true }));
+		// 실제 구현에서는 API 호출로 대체
+		const fetchProductionPlans = async () => {
 			try {
-				// In a real application, this would be an API call
-				// const response = await api.getProductionOrders(productionType);
-				// setProductionOrders(response.data);
+				setLoading(true);
+				// 모의 데이터 생성
+				const mockProductionPlans = [
+					{
+						id: "PP-2023-001",
+						name: "스마트폰 케이스 생산",
+						productCode: "SC-001",
+						startDate: "2023-10-15",
+						endDate: "2023-10-25",
+						status: "in-progress",
+						progress: 45,
+						quantity: 5000,
+						priority: "높음",
+						assignedTo: "생산팀 A",
+						location: "공장 1",
+						notes: "고객 요청에 따른 긴급 생산",
+						materials: [
+							{
+								id: "M001",
+								name: "플라스틱 원료",
+								quantity: 500,
+								unit: "kg",
+								status: "확보됨",
+							},
+							{
+								id: "M002",
+								name: "포장재",
+								quantity: 5000,
+								unit: "개",
+								status: "확보됨",
+							},
+							{
+								id: "M003",
+								name: "접착제",
+								quantity: 50,
+								unit: "L",
+								status: "부족",
+							},
+						],
+						steps: [
+							{
+								id: 1,
+								name: "원료 준비",
+								status: "completed",
+								startDate: "2023-10-15",
+								endDate: "2023-10-16",
+								assignedTo: "자재팀",
+							},
+							{
+								id: 2,
+								name: "사출 성형",
+								status: "in-progress",
+								startDate: "2023-10-17",
+								endDate: "2023-10-20",
+								assignedTo: "생산팀 A",
+							},
+							{
+								id: 3,
+								name: "조립",
+								status: "pending",
+								startDate: "2023-10-21",
+								endDate: "2023-10-23",
+								assignedTo: "생산팀 B",
+							},
+							{
+								id: 4,
+								name: "품질 검사",
+								status: "pending",
+								startDate: "2023-10-24",
+								endDate: "2023-10-24",
+								assignedTo: "품질팀",
+							},
+							{
+								id: 5,
+								name: "포장 및 출하",
+								status: "pending",
+								startDate: "2023-10-25",
+								endDate: "2023-10-25",
+								assignedTo: "물류팀",
+							},
+						],
+					},
+					{
+						id: "PP-2023-002",
+						name: "블루투스 이어폰 생산",
+						productCode: "BE-002",
+						startDate: "2023-10-10",
+						endDate: "2023-10-30",
+						status: "in-progress",
+						progress: 30,
+						quantity: 2000,
+						priority: "중간",
+						assignedTo: "생산팀 B",
+						location: "공장 2",
+						notes: "분기별 정기 생산",
+						materials: [
+							{
+								id: "M004",
+								name: "플라스틱 부품",
+								quantity: 4000,
+								unit: "개",
+								status: "확보됨",
+							},
+							{
+								id: "M005",
+								name: "배터리",
+								quantity: 2000,
+								unit: "개",
+								status: "확보됨",
+							},
+							{
+								id: "M006",
+								name: "전자 부품",
+								quantity: 2000,
+								unit: "세트",
+								status: "확보됨",
+							},
+							{
+								id: "M007",
+								name: "포장재",
+								quantity: 2000,
+								unit: "개",
+								status: "확보됨",
+							},
+						],
+						steps: [
+							{
+								id: 1,
+								name: "부품 준비",
+								status: "completed",
+								startDate: "2023-10-10",
+								endDate: "2023-10-12",
+								assignedTo: "자재팀",
+							},
+							{
+								id: 2,
+								name: "회로 조립",
+								status: "completed",
+								startDate: "2023-10-13",
+								endDate: "2023-10-17",
+								assignedTo: "전자팀",
+							},
+							{
+								id: 3,
+								name: "케이스 조립",
+								status: "in-progress",
+								startDate: "2023-10-18",
+								endDate: "2023-10-23",
+								assignedTo: "생산팀 B",
+							},
+							{
+								id: 4,
+								name: "품질 검사",
+								status: "pending",
+								startDate: "2023-10-24",
+								endDate: "2023-10-27",
+								assignedTo: "품질팀",
+							},
+							{
+								id: 5,
+								name: "포장 및 출하",
+								status: "pending",
+								startDate: "2023-10-28",
+								endDate: "2023-10-30",
+								assignedTo: "물류팀",
+							},
+						],
+					},
+					{
+						id: "PP-2023-003",
+						name: "태블릿 케이스 생산",
+						productCode: "TC-003",
+						startDate: "2023-10-20",
+						endDate: "2023-10-30",
+						status: "planned",
+						progress: 0,
+						quantity: 3000,
+						priority: "중간",
+						assignedTo: "생산팀 C",
+						location: "공장 1",
+						notes: "",
+						materials: [
+							{
+								id: "M008",
+								name: "가죽 원단",
+								quantity: 300,
+								unit: "m²",
+								status: "확보됨",
+							},
+							{
+								id: "M009",
+								name: "접착제",
+								quantity: 30,
+								unit: "L",
+								status: "확보됨",
+							},
+							{
+								id: "M010",
+								name: "포장재",
+								quantity: 3000,
+								unit: "개",
+								status: "주문 중",
+							},
+						],
+						steps: [
+							{
+								id: 1,
+								name: "원료 준비",
+								status: "pending",
+								startDate: "2023-10-20",
+								endDate: "2023-10-21",
+								assignedTo: "자재팀",
+							},
+							{
+								id: 2,
+								name: "재단",
+								status: "pending",
+								startDate: "2023-10-22",
+								endDate: "2023-10-24",
+								assignedTo: "생산팀 C",
+							},
+							{
+								id: 3,
+								name: "봉제",
+								status: "pending",
+								startDate: "2023-10-25",
+								endDate: "2023-10-27",
+								assignedTo: "생산팀 C",
+							},
+							{
+								id: 4,
+								name: "품질 검사",
+								status: "pending",
+								startDate: "2023-10-28",
+								endDate: "2023-10-29",
+								assignedTo: "품질팀",
+							},
+							{
+								id: 5,
+								name: "포장 및 출하",
+								status: "pending",
+								startDate: "2023-10-30",
+								endDate: "2023-10-30",
+								assignedTo: "물류팀",
+							},
+						],
+					},
+					{
+						id: "PP-2023-004",
+						name: "노트북 파우치 생산",
+						productCode: "NP-004",
+						startDate: "2023-10-05",
+						endDate: "2023-10-15",
+						status: "completed",
+						progress: 100,
+						quantity: 1000,
+						priority: "낮음",
+						assignedTo: "생산팀 C",
+						location: "공장 3",
+						notes: "소량 주문 생산",
+						materials: [
+							{
+								id: "M011",
+								name: "나일론 원단",
+								quantity: 150,
+								unit: "m²",
+								status: "확보됨",
+							},
+							{
+								id: "M012",
+								name: "지퍼",
+								quantity: 1000,
+								unit: "개",
+								status: "확보됨",
+							},
+							{
+								id: "M013",
+								name: "라벨",
+								quantity: 1000,
+								unit: "개",
+								status: "확보됨",
+							},
+							{
+								id: "M014",
+								name: "포장재",
+								quantity: 1000,
+								unit: "개",
+								status: "확보됨",
+							},
+						],
+						steps: [
+							{
+								id: 1,
+								name: "원료 준비",
+								status: "completed",
+								startDate: "2023-10-05",
+								endDate: "2023-10-06",
+								assignedTo: "자재팀",
+							},
+							{
+								id: 2,
+								name: "재단",
+								status: "completed",
+								startDate: "2023-10-07",
+								endDate: "2023-10-08",
+								assignedTo: "생산팀 C",
+							},
+							{
+								id: 3,
+								name: "봉제",
+								status: "completed",
+								startDate: "2023-10-09",
+								endDate: "2023-10-12",
+								assignedTo: "생산팀 C",
+							},
+							{
+								id: 4,
+								name: "품질 검사",
+								status: "completed",
+								startDate: "2023-10-13",
+								endDate: "2023-10-14",
+								assignedTo: "품질팀",
+							},
+							{
+								id: 5,
+								name: "포장 및 출하",
+								status: "completed",
+								startDate: "2023-10-15",
+								endDate: "2023-10-15",
+								assignedTo: "물류팀",
+							},
+						],
+					},
+					{
+						id: "PP-2023-005",
+						name: "스마트워치 밴드 생산",
+						productCode: "SB-005",
+						startDate: "2023-10-12",
+						endDate: "2023-10-22",
+						status: "delayed",
+						progress: 20,
+						quantity: 10000,
+						priority: "높음",
+						assignedTo: "생산팀 A",
+						location: "공장 2",
+						notes: "자재 공급 지연으로 일정 지연",
+						materials: [
+							{
+								id: "M015",
+								name: "실리콘 원료",
+								quantity: 200,
+								unit: "kg",
+								status: "부족",
+							},
+							{
+								id: "M016",
+								name: "버클",
+								quantity: 10000,
+								unit: "개",
+								status: "확보됨",
+							},
+							{
+								id: "M017",
+								name: "포장재",
+								quantity: 10000,
+								unit: "개",
+								status: "확보됨",
+							},
+						],
+						steps: [
+							{
+								id: 1,
+								name: "원료 준비",
+								status: "in-progress",
+								startDate: "2023-10-12",
+								endDate: "2023-10-14",
+								assignedTo: "자재팀",
+							},
+							{
+								id: 2,
+								name: "사출 성형",
+								status: "pending",
+								startDate: "2023-10-15",
+								endDate: "2023-10-18",
+								assignedTo: "생산팀 A",
+							},
+							{
+								id: 3,
+								name: "조립",
+								status: "pending",
+								startDate: "2023-10-19",
+								endDate: "2023-10-20",
+								assignedTo: "생산팀 A",
+							},
+							{
+								id: 4,
+								name: "품질 검사",
+								status: "pending",
+								startDate: "2023-10-21",
+								endDate: "2023-10-21",
+								assignedTo: "품질팀",
+							},
+							{
+								id: 5,
+								name: "포장 및 출하",
+								status: "pending",
+								startDate: "2023-10-22",
+								endDate: "2023-10-22",
+								assignedTo: "물류팀",
+							},
+						],
+					},
+				];
 
-				// Using mock data for demonstration
-				setProductionOrders(mockProductionOrders[productionType] || []);
-				setError((prev) => ({ ...prev, orders: null }));
+				setProductionPlans(mockProductionPlans);
+				setLoading(false);
 			} catch (err) {
-				setError((prev) => ({
-					...prev,
-					orders: "Failed to load production orders",
-				}));
-			} finally {
-				setLoading((prev) => ({ ...prev, orders: false }));
+				setError("생산 계획 데이터를 불러오는 중 오류가 발생했습니다.");
+				setLoading(false);
 			}
 		};
 
-		fetchProductionOrders();
-		// Reset selections when production type changes
-		setSelectedOrder(null);
-		setOrderDetails(null);
-	}, [productionType]);
+		fetchProductionPlans();
+	}, []);
 
-	// Load materials based on production type
-	useEffect(() => {
-		const fetchMaterials = async () => {
-			setLoading((prev) => ({ ...prev, materials: true }));
-			try {
-				// In a real application, this would be an API call
-				// const response = await api.getMaterials(productionType);
-				// setMaterials(response.data);
+	// 필터링된 생산 계획 목록
+	const filteredPlans = productionPlans.filter((plan) => {
+		// 상태 필터링
+		if (filterStatus !== "all" && plan.status !== filterStatus) {
+			return false;
+		}
 
-				// Using mock data for demonstration
-				setMaterials(mockMaterials[productionType] || []);
-				setError((prev) => ({ ...prev, materials: null }));
-			} catch (err) {
-				setError((prev) => ({
-					...prev,
-					materials: "Failed to load materials",
-				}));
-			} finally {
-				setLoading((prev) => ({ ...prev, materials: false }));
-			}
-		};
+		// 날짜 필터링
+		if (
+			filterDate.startDate &&
+			new Date(plan.startDate) < new Date(filterDate.startDate)
+		) {
+			return false;
+		}
+		if (
+			filterDate.endDate &&
+			new Date(plan.endDate) > new Date(filterDate.endDate)
+		) {
+			return false;
+		}
 
-		fetchMaterials();
-	}, [productionType]);
-
-	// Filter orders based on search term, date range, and status
-	useEffect(() => {
-		if (!productionOrders || productionOrders.length === 0) return;
-
-		let filtered = [...productionOrders];
-
-		// Apply search term filter
-		if (searchTerm) {
-			filtered = filtered.filter(
-				(order) =>
-					order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					order.productType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					(order.customer &&
-						order.customer.toLowerCase().includes(searchTerm.toLowerCase())) ||
-					(order.processor &&
-						order.processor.toLowerCase().includes(searchTerm.toLowerCase()))
+		// 검색어 필터링
+		if (searchQuery) {
+			const query = searchQuery.toLowerCase();
+			return (
+				plan.id.toLowerCase().includes(query) ||
+				plan.name.toLowerCase().includes(query) ||
+				plan.productCode.toLowerCase().includes(query) ||
+				plan.assignedTo.toLowerCase().includes(query)
 			);
 		}
 
-		// Apply date range filter
-		if (dateRange.start && dateRange.end) {
-			filtered = filtered.filter((order) => {
-				const orderDate = new Date(order.orderDate);
-				const startDate = new Date(dateRange.start);
-				const endDate = new Date(dateRange.end);
-				endDate.setHours(23, 59, 59); // Include the end date fully
+		return true;
+	});
 
-				return orderDate >= startDate && orderDate <= endDate;
-			});
+	// 생산 계획 선택 핸들러
+	const handleSelectPlan = (plan) => {
+		setSelectedPlan(plan);
+	};
+
+	// 모달 열기 핸들러
+	const openModal = (type) => {
+		setModalType(type);
+		setShowModal(true);
+	};
+
+	// 모달 닫기 핸들러
+	const closeModal = () => {
+		setShowModal(false);
+	};
+
+	// 생산 계획 상태 변경 핸들러
+	const handleStatusChange = (planId, newStatus) => {
+		setProductionPlans((prevPlans) =>
+			prevPlans.map((plan) =>
+				plan.id === planId ? { ...plan, status: newStatus } : plan
+			)
+		);
+
+		if (selectedPlan && selectedPlan.id === planId) {
+			setSelectedPlan((prev) => ({ ...prev, status: newStatus }));
 		}
 
-		// Apply status filter
-		if (statusFilter !== "all") {
-			filtered = filtered.filter((order) => order.status === statusFilter);
-		}
+		alert(
+			`생산 계획 ${planId}의 상태가 ${getStatusText(
+				newStatus
+			)}(으)로 변경되었습니다.`
+		);
+	};
 
-		setFilteredOrders(filtered);
+	// 생산 계획 삭제 핸들러
+	const handleDeletePlan = (planId) => {
+		if (window.confirm("이 생산 계획을 삭제하시겠습니까?")) {
+			setProductionPlans((prevPlans) =>
+				prevPlans.filter((plan) => plan.id !== planId)
+			);
 
-		// Auto-select first order if available and none selected
-		if (filtered.length > 0 && !selectedOrder) {
-			handleOrderSelect(filtered[0]);
-		}
-	}, [searchTerm, dateRange, statusFilter, productionOrders, selectedOrder]);
-
-	// Load order details when an order is selected
-	useEffect(() => {
-		if (!selectedOrder) return;
-
-		const fetchOrderDetails = async () => {
-			setLoading((prev) => ({ ...prev, details: true }));
-			try {
-				// In a real application, this would be an API call
-				// const response = await api.getOrderDetails(selectedOrder.id);
-				// setOrderDetails(response.data);
-
-				// Using mock data for demonstration
-				setOrderDetails(mockOrderDetails[selectedOrder.id] || null);
-				setError((prev) => ({ ...prev, details: null }));
-			} catch (err) {
-				setError((prev) => ({
-					...prev,
-					details: "Failed to load order details",
-				}));
-			} finally {
-				setLoading((prev) => ({ ...prev, details: false }));
+			if (selectedPlan && selectedPlan.id === planId) {
+				setSelectedPlan(null);
 			}
-		};
 
-		// Load processor inventory for outsourced production orders
-		const fetchProcessorInventory = async () => {
-			if (productionType !== "outsourced" || !selectedOrder.processor) return;
-
-			setLoading((prev) => ({ ...prev, inventory: true }));
-			try {
-				// In a real application, this would be an API call
-				// const response = await api.getProcessorInventory(selectedOrder.processor);
-				// setProcessorInventory(response.data);
-
-				// Using mock data for demonstration
-				setProcessorInventory(
-					mockMaterials.outsourced[selectedOrder.processor] || []
-				);
-				setError((prev) => ({ ...prev, inventory: null }));
-			} catch (err) {
-				setError((prev) => ({
-					...prev,
-					inventory: "Failed to load processor inventory",
-				}));
-			} finally {
-				setLoading((prev) => ({ ...prev, inventory: false }));
-			}
-		};
-
-		fetchOrderDetails();
-		fetchProcessorInventory();
-	}, [selectedOrder, productionType]);
-
-	// Toggle production type
-	const handleProductionTypeToggle = (type) => {
-		if (type !== productionType) {
-			setProductionType(type);
-			// Reset filters
-			setSearchTerm("");
-			setStatusFilter("all");
+			alert(`생산 계획 ${planId}가 삭제되었습니다.`);
 		}
 	};
 
-	// Handle order selection
-	const handleOrderSelect = (order) => {
-		setSelectedOrder(order);
-	};
-
-	// Handle search input change
-	const handleSearchChange = (e) => {
-		setSearchTerm(e.target.value);
-	};
-
-	// Handle search form submit
-	const handleSearchSubmit = (e) => {
-		e.preventDefault();
-		// Current implementation already filters as the user types
-	};
-
-	// Handle date range change
-	const handleDateRangeChange = (field, value) => {
-		setDateRange((prev) => ({ ...prev, [field]: value }));
-	};
-
-	// Handle status filter change
-	const handleStatusFilterChange = (e) => {
-		setStatusFilter(e.target.value);
-	};
-
-	// Handle new order form change
-	const handleNewOrderFormChange = (field, value) => {
-		setNewOrderForm((prev) => ({ ...prev, [field]: value }));
-	};
-
-	// Handle new order form submit
-	const handleNewOrderFormSubmit = (e) => {
-		e.preventDefault();
-		// In a real application, this would submit the form to an API
-		console.log("New order form submitted:", newOrderForm);
-		// Close the modal
-		setShowNewOrderModal(false);
-		// Reset the form
-		setNewOrderForm({
-			productType: "",
-			quantity: "",
-			dueDate: "",
-			processor: productionType,
+	// 생산 계획 생성 핸들러
+	const handleCreatePlan = (newPlan) => {
+		// 실제 구현에서는 API 호출로 대체
+		const plan = {
+			id: `PP-${Date.now()}`,
+			startDate: new Date().toISOString().split("T")[0],
+			endDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
+				.toISOString()
+				.split("T")[0],
+			status: "planned",
+			progress: 0,
+			...newPlan,
 			materials: [],
-		});
+			steps: [],
+		};
+
+		setProductionPlans((prevPlans) => [plan, ...prevPlans]);
+		closeModal();
+		alert("새 생산 계획이 생성되었습니다.");
 	};
 
-	// Handle new order button click
-	const handleNewOrderClick = () => {
-		setShowNewOrderModal(true);
+	// 생산 계획 수정 핸들러
+	const handleEditPlan = (updatedPlan) => {
+		// 실제 구현에서는 API 호출로 대체
+		setProductionPlans((prevPlans) =>
+			prevPlans.map((plan) =>
+				plan.id === updatedPlan.id ? { ...plan, ...updatedPlan } : plan
+			)
+		);
+
+		if (selectedPlan && selectedPlan.id === updatedPlan.id) {
+			setSelectedPlan((prev) => ({ ...prev, ...updatedPlan }));
+		}
+
+		closeModal();
+		alert("생산 계획이 수정되었습니다.");
 	};
 
-	// Format date for display
+	// 생산 시작 핸들러
+	const handleStartProduction = () => {
+		if (selectedPlan && selectedPlan.status === "planned") {
+			handleStatusChange(selectedPlan.id, "in-progress");
+		}
+	};
+
+	// 생산 완료 핸들러
+	const handleCompleteProduction = () => {
+		if (
+			selectedPlan &&
+			(selectedPlan.status === "in-progress" ||
+				selectedPlan.status === "delayed")
+		) {
+			handleStatusChange(selectedPlan.id, "completed");
+
+			// 진행률 100%로 업데이트
+			setProductionPlans((prevPlans) =>
+				prevPlans.map((plan) =>
+					plan.id === selectedPlan.id ? { ...plan, progress: 100 } : plan
+				)
+			);
+
+			setSelectedPlan((prev) => ({ ...prev, progress: 100 }));
+		}
+	};
+
+	// 생산 지연 핸들러
+	const handleDelayProduction = () => {
+		if (
+			selectedPlan &&
+			(selectedPlan.status === "planned" ||
+				selectedPlan.status === "in-progress")
+		) {
+			handleStatusChange(selectedPlan.id, "delayed");
+		}
+	};
+
+	// 날짜 포맷팅 함수
 	const formatDate = (dateString) => {
-		const options = { year: "numeric", month: "2-digit", day: "2-digit" };
+		const options = { year: "numeric", month: "long", day: "numeric" };
 		return new Date(dateString).toLocaleDateString("ko-KR", options);
 	};
 
-	// Get status badge for rendering
-	const getStatusBadge = (status) => {
-		switch (status) {
-			case "pending":
-				return <span className="status-badge status-pending">대기중</span>;
-			case "processing":
-				return <span className="status-badge status-processing">작업중</span>;
-			case "completed":
-				return <span className="status-badge status-completed">완료</span>;
-			default:
-				return <span className="status-badge">{status}</span>;
-		}
+	// 상태 텍스트 변환
+	const getStatusText = (status) => {
+		const statuses = {
+			all: "전체",
+			planned: "계획됨",
+			"in-progress": "진행 중",
+			completed: "완료됨",
+			delayed: "지연됨",
+		};
+		return statuses[status] || status;
 	};
 
-	// Format material status for display
-	const getMaterialStatusBadge = (status) => {
-		switch (status) {
-			case "allocated":
-				return <span className="status-badge status-allocated">할당됨</span>;
-			case "pending":
-				return <span className="status-badge status-pending">대기중</span>;
-			case "used":
-				return <span className="status-badge status-used">사용됨</span>;
-			default:
-				return <span className="status-badge">{status}</span>;
-		}
+	// 상태에 따른 배지 클래스
+	const getStatusBadgeClass = (status) => {
+		const classes = {
+			planned: "status-planned",
+			"in-progress": "status-in-progress",
+			completed: "status-completed",
+			delayed: "status-delayed",
+		};
+		return `status-badge ${classes[status] || ""}`;
 	};
 
-	// Render production order list
-	const renderProductionOrderList = () => {
-		if (loading.orders) {
-			return (
-				<div className="loading-indicator">Loading production orders...</div>
-			);
-		}
-
-		if (error.orders) {
-			return <div className="error-message">{error.orders}</div>;
-		}
-
-		if (filteredOrders.length === 0) {
-			return <div className="no-data">검색 결과가 없습니다.</div>;
-		}
-
-		return (
-			<table className="production-table">
-				<thead>
-					<tr>
-						<th>주문번호</th>
-						<th>제품</th>
-						<th>수량</th>
-						<th>납기일</th>
-						<th>상태</th>
-						{productionType === "outsourced" && <th>임가공업체</th>}
-						<th>거래처</th>
-					</tr>
-				</thead>
-				<tbody>
-					{filteredOrders.map((order) => (
-						<tr
-							key={order.id}
-							className={`order-item ${
-								selectedOrder?.id === order.id ? "selected" : ""
-							}`}
-							onClick={() => handleOrderSelect(order)}>
-							<td>{order.orderNumber}</td>
-							<td>{order.productType}</td>
-							<td>{order.quantity}</td>
-							<td>{formatDate(order.dueDate)}</td>
-							<td>{getStatusBadge(order.status)}</td>
-							{productionType === "outsourced" && <td>{order.processor}</td>}
-							<td>{order.customer}</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
-		);
+	// 단계 상태 텍스트 변환
+	const getStepStatusText = (status) => {
+		const statuses = {
+			pending: "대기 중",
+			"in-progress": "진행 중",
+			completed: "완료됨",
+		};
+		return statuses[status] || status;
 	};
 
-	// Render order details section
-	const renderOrderDetails = () => {
-		if (!selectedOrder) {
-			return (
-				<div className="no-data">
-					상세 정보를 확인하려면 생산 주문을 선택하세요.
-				</div>
-			);
-		}
-
-		if (loading.details) {
-			return <div className="loading-indicator">Loading order details...</div>;
-		}
-
-		if (error.details) {
-			return <div className="error-message">{error.details}</div>;
-		}
-
-		if (!orderDetails) {
-			return <div className="no-data">상세 정보가 없습니다.</div>;
-		}
-
-		return (
-			<div className="order-details">
-				<h3 className="details-title">생산 주문 상세 정보</h3>
-
-				<div className="details-section">
-					<h4 className="section-subtitle">기본 정보</h4>
-					<div className="details-grid">
-						<div className="details-item">
-							<span className="details-label">주문번호:</span>
-							<span className="details-value">{orderDetails.orderNumber}</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">제품:</span>
-							<span className="details-value">{orderDetails.productType}</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">분류:</span>
-							<span className="details-value">{orderDetails.category}</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">수량:</span>
-							<span className="details-value">
-								{orderDetails.quantity} {orderDetails.unit}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">주문일:</span>
-							<span className="details-value">
-								{formatDate(orderDetails.orderDate)}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">납기일:</span>
-							<span className="details-value">
-								{formatDate(orderDetails.dueDate)}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">상태:</span>
-							<span className="details-value">
-								{getStatusBadge(orderDetails.status)}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">담당자:</span>
-							<span className="details-value">
-								{orderDetails.assignedStaff}
-							</span>
-						</div>
-					</div>
-				</div>
-
-				{productionType === "outsourced" && (
-					<div className="details-section">
-						<h4 className="section-subtitle">임가공업체 정보</h4>
-						<div className="details-grid">
-							<div className="details-item">
-								<span className="details-label">업체명:</span>
-								<span className="details-value">{orderDetails.processor}</span>
-							</div>
-							<div className="details-item">
-								<span className="details-label">연락처:</span>
-								<span className="details-value">
-									{orderDetails.processorContact}
-								</span>
-							</div>
-							<div className="details-item">
-								<span className="details-label">주소:</span>
-								<span className="details-value">
-									{orderDetails.processorAddress}
-								</span>
-							</div>
-						</div>
-					</div>
-				)}
-
-				<div className="details-section">
-					<h4 className="section-subtitle">거래처 정보</h4>
-					<div className="details-grid">
-						<div className="details-item">
-							<span className="details-label">업체명:</span>
-							<span className="details-value">{orderDetails.customer}</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">연락처:</span>
-							<span className="details-value">
-								{orderDetails.customerContact}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">배송지:</span>
-							<span className="details-value">
-								{orderDetails.deliveryAddress}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">특이사항:</span>
-							<span className="details-value">
-								{orderDetails.specialInstructions}
-							</span>
-						</div>
-					</div>
-				</div>
-
-				<div className="details-section">
-					<h4 className="section-subtitle">생산 정보</h4>
-					<div className="details-grid">
-						<div className="details-item">
-							<span className="details-label">현재 단계:</span>
-							<span className="details-value">
-								{orderDetails.productionStage}
-							</span>
-						</div>
-						{orderDetails.estimatedCompletionTime && (
-							<div className="details-item">
-								<span className="details-label">예상 완료 시간:</span>
-								<span className="details-value">
-									{orderDetails.estimatedCompletionTime}
-								</span>
-							</div>
-						)}
-						<div className="details-item">
-							<span className="details-label">품질 검수:</span>
-							<span className="details-value">
-								{orderDetails.qualityCheck ? "완료" : "미완료"}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">포장 요구사항:</span>
-							<span className="details-value">
-								{orderDetails.packagingRequirements}
-							</span>
-						</div>
-					</div>
-				</div>
-
-				<div className="details-section materials-section">
-					<h4 className="section-subtitle">필요 자재</h4>
-					{orderDetails.materials && orderDetails.materials.length > 0 ? (
-						<table className="materials-table">
-							<thead>
-								<tr>
-									<th>코드</th>
-									<th>자재명</th>
-									<th>수량</th>
-									<th>상태</th>
-								</tr>
-							</thead>
-							<tbody>
-								{orderDetails.materials.map((material) => (
-									<tr key={material.id}>
-										<td>{material.code}</td>
-										<td>{material.name}</td>
-										<td>
-											{material.quantity} {material.unit}
-										</td>
-										<td>{getMaterialStatusBadge(material.status)}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					) : (
-						<div className="no-data">자재 정보가 없습니다.</div>
-					)}
-				</div>
-
-				<div className="details-section history-section">
-					<h4 className="section-subtitle">작업 이력</h4>
-					{orderDetails.history && orderDetails.history.length > 0 ? (
-						<table className="history-table">
-							<thead>
-								<tr>
-									<th>일시</th>
-									<th>담당자</th>
-									<th>단계</th>
-									<th>비고</th>
-								</tr>
-							</thead>
-							<tbody>
-								{orderDetails.history.map((history) => (
-									<tr key={history.id}>
-										<td>{history.date}</td>
-										<td>{history.staff}</td>
-										<td>{history.stage}</td>
-										<td>{history.notes}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					) : (
-						<div className="no-data">작업 이력이 없습니다.</div>
-					)}
-				</div>
-			</div>
-		);
-	};
-
-	// Render materials inventory section
-	const renderMaterialsInventory = () => {
-		const materialsToShow =
-			productionType === "outsourced" && selectedOrder?.processor
-				? processorInventory
-				: materials;
-
-		if (!materialsToShow || materialsToShow.length === 0) {
-			return <div className="no-data">자재 정보가 없습니다.</div>;
-		}
-
-		if (loading.materials || loading.inventory) {
-			return (
-				<div className="loading-indicator">Loading materials inventory...</div>
-			);
-		}
-
-		if (error.materials || error.inventory) {
-			return (
-				<div className="error-message">
-					{error.materials || error.inventory}
-				</div>
-			);
-		}
-
-		return (
-			<div className="materials-inventory">
-				<h3 className="section-title">
-					{productionType === "outsourced" && selectedOrder?.processor
-						? `${selectedOrder.processor} 보유 자재`
-						: "보유 자재 현황"}
-				</h3>
-
-				<table className="inventory-table">
-					<thead>
-						<tr>
-							<th>코드</th>
-							<th>자재명</th>
-							<th>재고</th>
-							<th>상태</th>
-						</tr>
-					</thead>
-					<tbody>
-						{materialsToShow.map((material) => (
-							<tr key={material.id}>
-								<td>{material.code}</td>
-								<td>{material.name}</td>
-								<td>
-									{material.stock} {material.unit}
-								</td>
-								<td>
-									<span
-										className={`status-badge ${
-											material.status === "normal"
-												? "status-normal"
-												: material.status === "warning"
-												? "status-warning"
-												: "status-danger"
-										}`}>
-										{material.status === "normal"
-											? "정상"
-											: material.status === "warning"
-											? "요주의"
-											: "부족"}
-									</span>
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
-		);
-	};
-
-	// Render new order modal
-	const renderNewOrderModal = () => {
-		if (!showNewOrderModal) return null;
-
-		return (
-			<div className="modal-overlay">
-				<div className="modal">
-					<div className="modal-header">
-						<h3 className="modal-title">신규 생산 요청</h3>
-						<button
-							className="modal-close"
-							onClick={() => setShowNewOrderModal(false)}>
-							×
-						</button>
-					</div>
-
-					<form
-						onSubmit={handleNewOrderFormSubmit}
-						className="modal-body">
-						<div className="form-group">
-							<label className="form-label">생산 유형</label>
-							<select
-								className="form-control"
-								value={newOrderForm.processor}
-								onChange={(e) =>
-									handleNewOrderFormChange("processor", e.target.value)
-								}
-								required>
-								{productionTypeOptions.map((option) => (
-									<option
-										key={option.id}
-										value={option.id}>
-										{option.name}
-									</option>
-								))}
-							</select>
-						</div>
-
-						<div className="form-group">
-							<label className="form-label">제품 유형</label>
-							<input
-								type="text"
-								className="form-control"
-								value={newOrderForm.productType}
-								onChange={(e) =>
-									handleNewOrderFormChange("productType", e.target.value)
-								}
-								placeholder="제품명 입력"
-								required
-							/>
-						</div>
-
-						<div className="form-row">
-							<div className="form-col">
-								<div className="form-group">
-									<label className="form-label">수량</label>
-									<input
-										type="number"
-										className="form-control"
-										value={newOrderForm.quantity}
-										onChange={(e) =>
-											handleNewOrderFormChange("quantity", e.target.value)
-										}
-										placeholder="수량 입력"
-										min="1"
-										required
-									/>
-								</div>
-							</div>
-							<div className="form-col">
-								<div className="form-group">
-									<label className="form-label">납기일</label>
-									<input
-										type="date"
-										className="form-control"
-										value={newOrderForm.dueDate}
-										onChange={(e) =>
-											handleNewOrderFormChange("dueDate", e.target.value)
-										}
-										min={new Date().toISOString().split("T")[0]}
-										required
-									/>
-								</div>
-							</div>
-						</div>
-
-						<div className="form-group">
-							<label className="form-label">필요 자재</label>
-							<div className="materials-selector">
-								{/* In a real application, this would be a dynamic material selector */}
-								<p className="note">자재는 저장 후 자동으로 할당됩니다.</p>
-							</div>
-						</div>
-
-						<div className="form-group">
-							<label className="form-label">특이사항</label>
-							<textarea
-								className="form-control"
-								rows="3"
-								placeholder="특이사항이나 추가 요청사항을 입력하세요"></textarea>
-						</div>
-
-						<div className="modal-footer">
-							<button
-								type="submit"
-								className="btn btn-primary">
-								생산 요청
-							</button>
-							<button
-								type="button"
-								className="btn btn-secondary"
-								onClick={() => setShowNewOrderModal(false)}>
-								취소
-							</button>
-						</div>
-					</form>
-				</div>
-			</div>
-		);
-	};
-
-	// Main render
 	return (
 		<div className="production-management">
-			{/* Header section with type selector and filters */}
+			{/* 헤더 섹션 */}
 			<div className="production-header">
-				<div className="production-type-selector">
-					{productionTypeOptions.map((option) => (
-						<button
-							key={option.id}
-							className={`production-type-btn ${
-								productionType === option.id ? "active" : ""
-							}`}
-							onClick={() => handleProductionTypeToggle(option.id)}>
-							{option.name}
-						</button>
-					))}
+				<h1 className="module-title">생산 관리</h1>
+
+				{/* 탭 네비게이션 */}
+				<div className="tab-navigation">
+					<button
+						className={`tab-button ${activeTab === "plans" ? "active" : ""}`}
+						onClick={() => setActiveTab("plans")}>
+						생산 계획
+					</button>
+					<button
+						className={`tab-button ${
+							activeTab === "dashboard" ? "active" : ""
+						}`}
+						onClick={() => setActiveTab("dashboard")}>
+						대시보드
+					</button>
+					<button
+						className={`tab-button ${activeTab === "schedule" ? "active" : ""}`}
+						onClick={() => setActiveTab("schedule")}>
+						일정
+					</button>
 				</div>
 
-				<div className="production-filters">
-					<form
-						onSubmit={handleSearchSubmit}
-						className="search-form">
-						<input
-							type="text"
-							className="search-input"
-							placeholder="주문번호, 제품명, 거래처 검색"
-							value={searchTerm}
-							onChange={handleSearchChange}
-						/>
-						<button
-							type="submit"
-							className="search-button">
-							검색
-						</button>
-					</form>
+				{/* 필터 섹션 */}
+				<div className="filter-section">
+					<h3 className="filter-title">필터 및 검색</h3>
 
-					<div className="filter-selects">
-						<div className="filter-group date-range">
-							<label>기간:</label>
+					<div className="filter-row">
+						<div className="filter-group">
+							<label className="filter-label">검색:</label>
 							<input
-								type="date"
-								className="date-input"
-								value={dateRange.start}
-								onChange={(e) => handleDateRangeChange("start", e.target.value)}
-							/>
-							<span className="date-separator">~</span>
-							<input
-								type="date"
-								className="date-input"
-								value={dateRange.end}
-								onChange={(e) => handleDateRangeChange("end", e.target.value)}
+								type="text"
+								className="filter-input"
+								placeholder="ID, 이름, 제품 코드 검색"
+								value={searchQuery}
+								onChange={(e) => setSearchQuery(e.target.value)}
 							/>
 						</div>
 
 						<div className="filter-group">
-							<label htmlFor="status-filter">상태:</label>
+							<label className="filter-label">상태:</label>
 							<select
-								id="status-filter"
 								className="filter-select"
-								value={statusFilter}
-								onChange={handleStatusFilterChange}>
-								{statusOptions.map((option) => (
-									<option
-										key={option.id}
-										value={option.id}>
-										{option.name}
-									</option>
-								))}
+								value={filterStatus}
+								onChange={(e) => setFilterStatus(e.target.value)}>
+								<option value="all">전체</option>
+								<option value="planned">계획됨</option>
+								<option value="in-progress">진행 중</option>
+								<option value="completed">완료됨</option>
+								<option value="delayed">지연됨</option>
 							</select>
 						</div>
 					</div>
-				</div>
-			</div>
 
-			{/* Main content area */}
-			<div className="production-content">
-				{/* Production order list section */}
-				<div className="order-list-section">
-					<h3 className="section-title">
-						{productionType === "woodesty"
-							? "우드에스티 생산 목록"
-							: productionType === "outsourced"
-							? "외부임가공 생산 목록"
-							: "대화동공장 생산 목록"}
-						<span className="item-count">
-							({filteredOrders.length}/{productionOrders.length})
-						</span>
-						<button
-							className="btn btn-primary new-order-btn"
-							onClick={handleNewOrderClick}>
-							신규 생산 요청
-						</button>
-					</h3>
-					{renderProductionOrderList()}
-				</div>
+					<div className="filter-row">
+						<div className="filter-group">
+							<label className="filter-label">시작일:</label>
+							<input
+								type="date"
+								className="filter-input"
+								value={filterDate.startDate}
+								onChange={(e) =>
+									setFilterDate({ ...filterDate, startDate: e.target.value })
+								}
+							/>
+						</div>
 
-				{/* Order details and materials section */}
-				<div className="details-and-materials">
-					{/* Order details section */}
-					<div className="order-details-section">{renderOrderDetails()}</div>
-
-					{/* Materials inventory section */}
-					<div className="materials-inventory-section">
-						{renderMaterialsInventory()}
+						<div className="filter-group">
+							<label className="filter-label">종료일:</label>
+							<input
+								type="date"
+								className="filter-input"
+								value={filterDate.endDate}
+								onChange={(e) =>
+									setFilterDate({ ...filterDate, endDate: e.target.value })
+								}
+							/>
+						</div>
 					</div>
 				</div>
+
+				{/* 액션 버튼 */}
+				<div className="action-buttons">
+					<button
+						className="btn btn-primary"
+						onClick={() => openModal("create")}>
+						새 생산 계획
+					</button>
+					<button
+						className="btn btn-secondary"
+						onClick={() => selectedPlan && openModal("edit")}
+						disabled={!selectedPlan}>
+						계획 수정
+					</button>
+					<button
+						className="btn btn-secondary"
+						onClick={() => selectedPlan && handleDeletePlan(selectedPlan.id)}
+						disabled={!selectedPlan}>
+						계획 삭제
+					</button>
+					<button
+						className="btn btn-secondary"
+						onClick={() => alert("내보내기 기능이 실행되었습니다.")}>
+						내보내기
+					</button>
+				</div>
 			</div>
 
-			{/* Action buttons */}
-			{selectedOrder && (
-				<div className="action-buttons">
-					{selectedOrder.status === "pending" && (
-						<button className="action-button start-button">생산 시작</button>
-					)}
-					{selectedOrder.status === "processing" && (
-						<button className="action-button update-button">
-							진행 상태 업데이트
-						</button>
-					)}
-					{selectedOrder.status === "processing" && (
-						<button className="action-button complete-button">생산 완료</button>
-					)}
-					<button className="action-button edit-button">정보 수정</button>
-					<button className="action-button print-button">
-						작업지시서 출력
-					</button>
-					{productionType === "outsourced" && (
-						<button className="action-button material-button">
-							원자재 배분
-						</button>
+			{/* 메인 콘텐츠 영역 */}
+			{activeTab === "plans" && (
+				<div className="production-content">
+					{/* 생산 계획 목록 섹션 */}
+					<div className="production-plan-section">
+						<h2 className="section-title">
+							생산 계획 목록
+							<span className="item-count">{filteredPlans.length}개 항목</span>
+						</h2>
+
+						{loading ? (
+							<div className="loading-indicator">데이터를 불러오는 중...</div>
+						) : error ? (
+							<div className="error-message">{error}</div>
+						) : filteredPlans.length === 0 ? (
+							<div className="no-data">표시할 생산 계획이 없습니다.</div>
+						) : (
+							<table className="production-table">
+								<thead>
+									<tr>
+										<th>ID</th>
+										<th>이름</th>
+										<th>제품 코드</th>
+										<th>시작일</th>
+										<th>종료일</th>
+										<th>수량</th>
+										<th>진행률</th>
+										<th>상태</th>
+									</tr>
+								</thead>
+								<tbody>
+									{filteredPlans.map((plan) => (
+										<tr
+											key={plan.id}
+											className={
+												selectedPlan && selectedPlan.id === plan.id
+													? "selected"
+													: ""
+											}
+											onClick={() => handleSelectPlan(plan)}>
+											<td>{plan.id}</td>
+											<td>{plan.name}</td>
+											<td>{plan.productCode}</td>
+											<td>{formatDate(plan.startDate)}</td>
+											<td>{formatDate(plan.endDate)}</td>
+											<td>{plan.quantity.toLocaleString()}</td>
+											<td>{plan.progress}%</td>
+											<td>
+												<span className={getStatusBadgeClass(plan.status)}>
+													{getStatusText(plan.status)}
+												</span>
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						)}
+					</div>
+
+					{/* 생산 계획 상세 정보 섹션 */}
+					{selectedPlan ? (
+						<div className="production-details-section">
+							<h2 className="details-title">생산 계획 상세 정보</h2>
+
+							<div className="details-section">
+								<h3 className="section-subtitle">기본 정보</h3>
+								<div className="details-item">
+									<span className="details-label">계획 ID:</span>
+									<span className="details-value">{selectedPlan.id}</span>
+								</div>
+								<div className="details-item">
+									<span className="details-label">이름:</span>
+									<span className="details-value">{selectedPlan.name}</span>
+								</div>
+								<div className="details-item">
+									<span className="details-label">제품 코드:</span>
+									<span className="details-value">
+										{selectedPlan.productCode}
+									</span>
+								</div>
+								<div className="details-item">
+									<span className="details-label">상태:</span>
+									<span className="details-value">
+										<span className={getStatusBadgeClass(selectedPlan.status)}>
+											{getStatusText(selectedPlan.status)}
+										</span>
+									</span>
+								</div>
+								<div className="details-item">
+									<span className="details-label">시작일:</span>
+									<span className="details-value">
+										{formatDate(selectedPlan.startDate)}
+									</span>
+								</div>
+								<div className="details-item">
+									<span className="details-label">종료일:</span>
+									<span className="details-value">
+										{formatDate(selectedPlan.endDate)}
+									</span>
+								</div>
+								<div className="details-item">
+									<span className="details-label">수량:</span>
+									<span className="details-value">
+										{selectedPlan.quantity.toLocaleString()}
+									</span>
+								</div>
+								<div className="details-item">
+									<span className="details-label">우선순위:</span>
+									<span className="details-value">{selectedPlan.priority}</span>
+								</div>
+								<div className="details-item">
+									<span className="details-label">담당자:</span>
+									<span className="details-value">
+										{selectedPlan.assignedTo}
+									</span>
+								</div>
+								<div className="details-item">
+									<span className="details-label">위치:</span>
+									<span className="details-value">{selectedPlan.location}</span>
+								</div>
+								{selectedPlan.notes && (
+									<div className="details-item">
+										<span className="details-label">메모:</span>
+										<span className="details-value">{selectedPlan.notes}</span>
+									</div>
+								)}
+							</div>
+
+							<div className="details-section">
+								<h3 className="section-subtitle">진행 상황</h3>
+								<div className="progress-container">
+									<div className="progress-bar-container">
+										<div
+											className="progress-bar"
+											style={{ width: `${selectedPlan.progress}%` }}></div>
+									</div>
+									<div className="progress-text">
+										<span>0%</span>
+										<span>{selectedPlan.progress}%</span>
+										<span>100%</span>
+									</div>
+								</div>
+							</div>
+
+							<div className="details-section">
+								<h3 className="section-subtitle">필요 자재</h3>
+								<table className="materials-table">
+									<thead>
+										<tr>
+											<th>자재 ID</th>
+											<th>이름</th>
+											<th>수량</th>
+											<th>단위</th>
+											<th>상태</th>
+										</tr>
+									</thead>
+									<tbody>
+										{selectedPlan.materials.map((material) => (
+											<tr key={material.id}>
+												<td>{material.id}</td>
+												<td>{material.name}</td>
+												<td>{material.quantity}</td>
+												<td>{material.unit}</td>
+												<td>{material.status}</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+
+							<div className="details-section">
+								<h3 className="section-subtitle">작업 단계</h3>
+								<ul className="steps-list">
+									{selectedPlan.steps.map((step) => (
+										<li
+											key={step.id}
+											className="step-item">
+											<div className={`step-status ${step.status}`}></div>
+											<div className="step-content">
+												<div className="step-title">{step.name}</div>
+												<div className="step-details">
+													<span>
+														{formatDate(step.startDate)} -{" "}
+														{formatDate(step.endDate)}
+													</span>
+													<span> • {step.assignedTo}</span>
+													<span> • {getStepStatusText(step.status)}</span>
+												</div>
+											</div>
+										</li>
+									))}
+								</ul>
+							</div>
+
+							<div className="details-section">
+								<h3 className="section-subtitle">작업</h3>
+								<div className="action-buttons">
+									{selectedPlan.status === "planned" && (
+										<button
+											className="btn btn-primary"
+											onClick={handleStartProduction}>
+											생산 시작
+										</button>
+									)}
+									{(selectedPlan.status === "in-progress" ||
+										selectedPlan.status === "delayed") && (
+										<button
+											className="btn btn-primary"
+											onClick={handleCompleteProduction}>
+											생산 완료
+										</button>
+									)}
+									{(selectedPlan.status === "planned" ||
+										selectedPlan.status === "in-progress") && (
+										<button
+											className="btn btn-secondary"
+											onClick={handleDelayProduction}>
+											지연 표시
+										</button>
+									)}
+									<button
+										className="btn btn-secondary"
+										onClick={() => alert("보고서 생성 기능이 실행되었습니다.")}>
+										보고서 생성
+									</button>
+								</div>
+							</div>
+						</div>
+					) : (
+						<div className="production-details-section">
+							<div className="no-data">
+								생산 계획을 선택하여 상세 정보를 확인하세요.
+							</div>
+						</div>
 					)}
 				</div>
 			)}
 
-			{/* New order modal */}
-			{renderNewOrderModal()}
+			{/* 대시보드 탭 */}
+			{activeTab === "dashboard" && (
+				<div className="dashboard-content">
+					<div className="dashboard-cards">
+						<div className="dashboard-card">
+							<div className="card-title">총 생산 계획</div>
+							<div className="card-value">{productionPlans.length}</div>
+						</div>
+						<div className="dashboard-card">
+							<div className="card-title">진행 중인 계획</div>
+							<div className="card-value">
+								{
+									productionPlans.filter(
+										(plan) => plan.status === "in-progress"
+									).length
+								}
+							</div>
+						</div>
+						<div className="dashboard-card">
+							<div className="card-title">완료된 계획</div>
+							<div className="card-value">
+								{
+									productionPlans.filter((plan) => plan.status === "completed")
+										.length
+								}
+							</div>
+						</div>
+						<div className="dashboard-card">
+							<div className="card-title">지연된 계획</div>
+							<div className="card-value">
+								{
+									productionPlans.filter((plan) => plan.status === "delayed")
+										.length
+								}
+							</div>
+							<div className="card-trend trend-up">
+								<span>↑ 2 (전월 대비)</span>
+							</div>
+						</div>
+					</div>
+
+					<div className="production-plan-section">
+						<h2 className="section-title">생산 현황</h2>
+						<div
+							className="chart-placeholder"
+							style={{
+								height: "300px",
+								background: "#f5f6fa",
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								borderRadius: "8px",
+							}}>
+							<p>여기에 생산 현황 차트가 표시됩니다.</p>
+						</div>
+					</div>
+
+					<div
+						className="production-plan-section"
+						style={{ marginTop: "20px" }}>
+						<h2 className="section-title">자재 현황</h2>
+						<div
+							className="chart-placeholder"
+							style={{
+								height: "300px",
+								background: "#f5f6fa",
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								borderRadius: "8px",
+							}}>
+							<p>여기에 자재 현황 차트가 표시됩니다.</p>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* 일정 탭 */}
+			{activeTab === "schedule" && (
+				<div className="schedule-content">
+					<div className="production-plan-section">
+						<h2 className="section-title">생산 일정</h2>
+
+						<div className="gantt-chart">
+							<div className="gantt-time-markers">
+								<div className="gantt-time-marker">10월 1일</div>
+								<div className="gantt-time-marker">10월 5일</div>
+								<div className="gantt-time-marker">10월 10일</div>
+								<div className="gantt-time-marker">10월 15일</div>
+								<div className="gantt-time-marker">10월 20일</div>
+								<div className="gantt-time-marker">10월 25일</div>
+								<div className="gantt-time-marker">10월 30일</div>
+							</div>
+
+							{productionPlans.map((plan) => {
+								// 간트 차트 위치 계산 (실제 구현에서는 날짜 기반으로 계산)
+								const startPercent = 10; // 예시 값
+								const widthPercent = 30; // 예시 값
+
+								return (
+									<div
+										key={plan.id}
+										className="gantt-row">
+										<div className="gantt-row-header">{plan.name}</div>
+										<div className="gantt-timeline">
+											<div
+												className={`gantt-bar ${plan.status}`}
+												style={{
+													left: `${startPercent}%`,
+													width: `${widthPercent}%`,
+												}}></div>
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* 모달 */}
+			{showModal && (
+				<div
+					className="modal-overlay"
+					onClick={closeModal}>
+					<div
+						className="modal-container"
+						onClick={(e) => e.stopPropagation()}>
+						<div className="modal-header">
+							<h2 className="modal-title">
+								{modalType === "create"
+									? "새 생산 계획 생성"
+									: "생산 계획 수정"}
+							</h2>
+							<button
+								className="modal-close"
+								onClick={closeModal}>
+								&times;
+							</button>
+						</div>
+						<div className="modal-body">
+							{/* 여기에 생산 계획 생성/수정 폼 구현 */}
+							<div className="filter-row">
+								<div className="filter-group">
+									<label className="filter-label">이름:</label>
+									<input
+										type="text"
+										className="filter-input"
+										placeholder="생산 계획 이름"
+										defaultValue={
+											modalType === "edit" && selectedPlan
+												? selectedPlan.name
+												: ""
+										}
+									/>
+								</div>
+								<div className="filter-group">
+									<label className="filter-label">제품 코드:</label>
+									<input
+										type="text"
+										className="filter-input"
+										placeholder="제품 코드"
+										defaultValue={
+											modalType === "edit" && selectedPlan
+												? selectedPlan.productCode
+												: ""
+										}
+									/>
+								</div>
+							</div>
+
+							<div className="filter-row">
+								<div className="filter-group">
+									<label className="filter-label">시작일:</label>
+									<input
+										type="date"
+										className="filter-input"
+										defaultValue={
+											modalType === "edit" && selectedPlan
+												? selectedPlan.startDate
+												: ""
+										}
+									/>
+								</div>
+								<div className="filter-group">
+									<label className="filter-label">종료일:</label>
+									<input
+										type="date"
+										className="filter-input"
+										defaultValue={
+											modalType === "edit" && selectedPlan
+												? selectedPlan.endDate
+												: ""
+										}
+									/>
+								</div>
+							</div>
+
+							<div className="filter-row">
+								<div className="filter-group">
+									<label className="filter-label">수량:</label>
+									<input
+										type="number"
+										className="filter-input"
+										placeholder="0"
+										defaultValue={
+											modalType === "edit" && selectedPlan
+												? selectedPlan.quantity
+												: ""
+										}
+									/>
+								</div>
+								<div className="filter-group">
+									<label className="filter-label">우선순위:</label>
+									<select
+										className="filter-select"
+										defaultValue={
+											modalType === "edit" && selectedPlan
+												? selectedPlan.priority
+												: "중간"
+										}>
+										<option value="높음">높음</option>
+										<option value="중간">중간</option>
+										<option value="낮음">낮음</option>
+									</select>
+								</div>
+							</div>
+
+							<div className="filter-row">
+								<div className="filter-group">
+									<label className="filter-label">담당자:</label>
+									<select
+										className="filter-select"
+										defaultValue={
+											modalType === "edit" && selectedPlan
+												? selectedPlan.assignedTo
+												: "생산팀 A"
+										}>
+										<option value="생산팀 A">생산팀 A</option>
+										<option value="생산팀 B">생산팀 B</option>
+										<option value="생산팀 C">생산팀 C</option>
+									</select>
+								</div>
+								<div className="filter-group">
+									<label className="filter-label">위치:</label>
+									<select
+										className="filter-select"
+										defaultValue={
+											modalType === "edit" && selectedPlan
+												? selectedPlan.location
+												: "공장 1"
+										}>
+										<option value="공장 1">공장 1</option>
+										<option value="공장 2">공장 2</option>
+										<option value="공장 3">공장 3</option>
+									</select>
+								</div>
+							</div>
+
+							<div className="filter-row">
+								<div
+									className="filter-group"
+									style={{ width: "100%" }}>
+									<label className="filter-label">메모:</label>
+									<textarea
+										className="filter-input"
+										placeholder="추가 메모"
+										style={{
+											width: "100%",
+											height: "80px",
+											resize: "vertical",
+										}}
+										defaultValue={
+											modalType === "edit" && selectedPlan
+												? selectedPlan.notes
+												: ""
+										}></textarea>
+								</div>
+							</div>
+						</div>
+						<div className="modal-footer">
+							<button
+								className="btn btn-secondary"
+								onClick={closeModal}>
+								취소
+							</button>
+							<button
+								className="btn btn-primary"
+								onClick={() => {
+									if (modalType === "create") {
+										// 실제 구현에서는 폼 데이터를 수집하여 전달
+										handleCreatePlan({
+											name: "새 생산 계획",
+											productCode: "NEW-001",
+											quantity: 1000,
+											priority: "중간",
+											assignedTo: "생산팀 A",
+											location: "공장 1",
+											notes: "",
+										});
+									} else {
+										// 실제 구현에서는 폼 데이터를 수집하여 전달
+										handleEditPlan({
+											...selectedPlan,
+											name: "수정된 생산 계획",
+										});
+									}
+								}}>
+								{modalType === "create" ? "생성" : "수정"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
-};
-
-ProductionManagement.propTypes = {
-	initialProductionType: PropTypes.oneOf([
-		"woodesty",
-		"outsourced",
-		"daehwadong",
-	]),
 };
 
 export default ProductionManagement;

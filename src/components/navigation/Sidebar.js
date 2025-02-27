@@ -134,6 +134,7 @@ const Sidebar = ({
 						</li>
 					</>
 				);
+
 			case "financial":
 				return (
 					<>

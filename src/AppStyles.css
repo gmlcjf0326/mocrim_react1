@@ -1,411 +1,137 @@
-/* Reset and base styles */
-* {
-	margin: 0;
-	padding: 0;
-	box-sizing: border-box;
-}
-
-body {
-	font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI",
-		"Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
-		"Helvetica Neue", sans-serif;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
+/* 전체 앱 컨테이너 */
+.app {
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	width: 100vw;
+	overflow: hidden;
 	background-color: #f5f6fa;
+}
+
+/* 메인 래퍼 (사이드바와 콘텐츠를 포함) */
+.main-wrapper {
+	display: flex;
+	flex: 1;
+	overflow: hidden;
+}
+
+/* 메인 콘텐츠 영역 */
+.main-content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	transition: margin-left 0.3s ease;
+	overflow: hidden;
+}
+
+/* 사이드바가 닫혔을 때 메인 콘텐츠 조정 */
+.main-content.sidebar-closed {
+	margin-left: 0;
+}
+
+/* 콘텐츠 컨테이너 */
+.content-container {
+	flex: 1;
+	padding: 20px;
+	overflow-y: auto;
+}
+
+/* 모듈 컨테이너 (임시 컴포넌트용) */
+.module-container {
+	background-color: white;
+	border-radius: 8px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+	padding: 20px;
+	margin-bottom: 20px;
+}
+
+.module-title {
+	font-size: 24px;
+	font-weight: 600;
 	color: #333;
-	line-height: 1.5;
+	margin-bottom: 15px;
 }
 
-code {
-	font-family: "Source Code Pro", Menlo, Monaco, Consolas, "Courier New",
-		monospace;
-}
-
-/* Typography */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-	font-weight: 700;
-	line-height: 1.2;
-	margin-bottom: 0.5em;
-}
-
-h1 {
-	font-size: 2rem;
-}
-
-h2 {
-	font-size: 1.75rem;
-}
-
-h3 {
-	font-size: 1.5rem;
-}
-
-h4 {
-	font-size: 1.25rem;
-}
-
-h5 {
-	font-size: 1.125rem;
-}
-
-h6 {
-	font-size: 1rem;
-}
-
-p {
-	margin-bottom: 1em;
-}
-
-a {
-	color: #3498db;
-	text-decoration: none;
-	transition: color 0.2s ease;
-}
-
-a:hover {
-	color: #2980b9;
-	text-decoration: underline;
-}
-
-/* Buttons */
-button,
+/* 버튼 스타일 */
 .btn {
-	font-family: inherit;
-	font-size: 1rem;
+	display: inline-block;
+	font-weight: 500;
+	text-align: center;
+	white-space: nowrap;
+	vertical-align: middle;
+	user-select: none;
+	border: 1px solid transparent;
 	padding: 0.5rem 1rem;
+	font-size: 14px;
+	line-height: 1.5;
 	border-radius: 4px;
-	border: none;
+	transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+		border-color 0.15s ease-in-out;
 	cursor: pointer;
-	transition: all 0.2s ease;
-	background-color: #3498db;
-	color: white;
-}
-
-button:hover,
-.btn:hover {
-	background-color: #2980b9;
-}
-
-button:disabled,
-.btn:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
 }
 
 .btn-primary {
+	color: #fff;
 	background-color: #3498db;
-	color: white;
+	border-color: #3498db;
 }
 
 .btn-primary:hover {
 	background-color: #2980b9;
+	border-color: #2980b9;
 }
 
 .btn-secondary {
-	background-color: #2ecc71;
-	color: white;
+	color: #333;
+	background-color: #f5f6fa;
+	border-color: #ddd;
 }
 
 .btn-secondary:hover {
-	background-color: #27ae60;
+	background-color: #e9ecef;
+	border-color: #ccc;
 }
 
 .btn-danger {
+	color: #fff;
 	background-color: #e74c3c;
-	color: white;
+	border-color: #e74c3c;
 }
 
 .btn-danger:hover {
 	background-color: #c0392b;
+	border-color: #c0392b;
 }
 
-.btn-warning {
-	background-color: #f1c40f;
-	color: #333;
+/* 스크롤바 스타일링 */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
 }
 
-.btn-warning:hover {
-	background-color: #f39c12;
-}
-
-/* Forms */
-.form-group {
-	margin-bottom: 1rem;
-}
-
-label {
-	display: block;
-	margin-bottom: 0.5rem;
-	font-weight: 500;
-}
-
-input,
-select,
-textarea {
-	width: 100%;
-	padding: 0.75rem;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-	font-family: inherit;
-	font-size: 1rem;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-	outline: none;
-	border-color: #3498db;
-	box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-}
-
-input:disabled,
-select:disabled,
-textarea:disabled {
-	background-color: #f9f9f9;
-	cursor: not-allowed;
-}
-
-.form-error {
-	color: #e74c3c;
-	font-size: 0.875rem;
-	margin-top: 0.25rem;
-}
-
-/* Login page styles */
-.login-page {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 100vh;
-	background-color: #f5f6fa;
-}
-
-.login-container {
-	background-color: white;
-	border-radius: 8px;
-	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-	padding: 2rem;
-	width: 100%;
-	max-width: 400px;
-}
-
-.login-container h1 {
-	text-align: center;
-	margin-bottom: 2rem;
-	color: #333;
-}
-
-.login-form {
-	display: flex;
-	flex-direction: column;
-}
-
-.login-button {
-	margin-top: 1rem;
-	padding: 0.75rem;
-	background-color: #3498db;
-	color: white;
-	border: none;
-	border-radius: 4px;
-	font-size: 1rem;
-	font-weight: 500;
-	cursor: pointer;
-	transition: background-color 0.2s ease;
-}
-
-.login-button:hover {
-	background-color: #2980b9;
-}
-
-.error-message {
-	background-color: #ffebee;
-	color: #c62828;
-	padding: 0.75rem;
-	border-radius: 4px;
-	margin-bottom: 1rem;
-}
-
-/* Loading screen */
-.loading-screen {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 100vh;
-	background-color: #f5f6fa;
-	font-size: 1.25rem;
-	color: #666;
-}
-
-/* Utility classes */
-.text-center {
-	text-align: center;
-}
-
-.text-right {
-	text-align: right;
-}
-
-.text-left {
-	text-align: left;
-}
-
-.text-bold {
-	font-weight: bold;
-}
-
-.text-italic {
-	font-style: italic;
-}
-
-.text-muted {
-	color: #6c757d;
-}
-
-.text-success {
-	color: #2ecc71;
-}
-
-.text-danger {
-	color: #e74c3c;
-}
-
-.text-warning {
-	color: #f39c12;
-}
-
-.bg-light {
-	background-color: #f8f9fa;
-}
-
-.mt-1 {
-	margin-top: 0.25rem;
-}
-
-.mt-2 {
-	margin-top: 0.5rem;
-}
-
-.mt-3 {
-	margin-top: 1rem;
-}
-
-.mt-4 {
-	margin-top: 1.5rem;
-}
-
-.mt-5 {
-	margin-top: 3rem;
-}
-
-.mb-1 {
-	margin-bottom: 0.25rem;
-}
-
-.mb-2 {
-	margin-bottom: 0.5rem;
-}
-
-.mb-3 {
-	margin-bottom: 1rem;
-}
-
-.mb-4 {
-	margin-bottom: 1.5rem;
-}
-
-.mb-5 {
-	margin-bottom: 3rem;
-}
-
-.mx-auto {
-	margin-left: auto;
-	margin-right: auto;
-}
-
-.p-1 {
-	padding: 0.25rem;
-}
-
-.p-2 {
-	padding: 0.5rem;
-}
-
-.p-3 {
-	padding: 1rem;
-}
-
-.p-4 {
-	padding: 1.5rem;
-}
-
-.p-5 {
-	padding: 3rem;
-}
-
-.d-flex {
-	display: flex;
-}
-
-.flex-column {
-	flex-direction: column;
-}
-
-.align-items-center {
-	align-items: center;
-}
-
-.justify-content-center {
-	justify-content: center;
-}
-
-.justify-content-between {
-	justify-content: space-between;
-}
-
-.w-100 {
-	width: 100%;
-}
-
-.h-100 {
-	height: 100%;
-}
-
-.rounded {
+::-webkit-scrollbar-track {
+	background: #f1f1f1;
 	border-radius: 4px;
 }
 
-.shadow {
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+::-webkit-scrollbar-thumb {
+	background: #c1c1c1;
+	border-radius: 4px;
 }
 
-/* Responsive breakpoints */
-@media (max-width: 1200px) {
-	.container {
-		max-width: 960px;
-	}
+::-webkit-scrollbar-thumb:hover {
+	background: #a8a8a8;
 }
 
-@media (max-width: 992px) {
-	.container {
-		max-width: 720px;
-	}
-}
-
+/* 반응형 스타일 */
 @media (max-width: 768px) {
-	.container {
-		max-width: 540px;
+	.content-container {
+		padding: 15px;
 	}
 }
 
 @media (max-width: 576px) {
-	.container {
-		max-width: 100%;
-		padding-left: 15px;
-		padding-right: 15px;
+	.content-container {
+		padding: 10px;
 	}
 }

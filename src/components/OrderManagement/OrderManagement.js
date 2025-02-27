@@ -1,880 +1,1301 @@
-import React, { useState, useEffect, useCallback } from "react";
-import PropTypes from "prop-types";
+import React, { useState, useEffect } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { useNotification } from "../../contexts/NotificationContext";
 import "./OrderManagement.css";
 
 /**
- * OrderManagement Component
+ * OrderManagement 컴포넌트
  *
- * Comprehensive component for managing customer orders, shipping, and fulfillment
- * with real-time status tracking and inventory integration.
+ * 주문 접수, 확인, 처리 및 자재부/생산부 요청 관리
+ * view 타입: list, create, details, process
  */
-const OrderManagement = () => {
+const OrderManagement = ({ view = "list" }) => {
+	// 라우터 훅
+	const { orderId } = useParams();
+	const navigate = useNavigate();
+	const { showNotification } = useNotification();
+
+	// 상태 관리
+	const [activeTab, setActiveTab] = useState("all");
 	const [orders, setOrders] = useState([]);
-	const [filteredOrders, setFilteredOrders] = useState([]);
 	const [selectedOrder, setSelectedOrder] = useState(null);
-	const [orderDetails, setOrderDetails] = useState(null);
-	const [searchTerm, setSearchTerm] = useState("");
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
+
+	// 필터 상태
+	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
-	const [dateRange, setDateRange] = useState({
-		start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-			.toISOString()
-			.split("T")[0], // 30 days ago
-		end: new Date().toISOString().split("T")[0], // today
+	const [dateRangeFilter, setDateRangeFilter] = useState("all");
+	const [sortBy, setSortBy] = useState("newest");
+
+	// 새 주문 폼 데이터
+	const [formData, setFormData] = useState({
+		customerName: "",
+		customerContact: "",
+		customerEmail: "",
+		deliveryAddress: "",
+		requestedDate: "",
+		orderItems: [],
+		notes: "",
 	});
-	const [loading, setLoading] = useState({
-		orders: false,
-		details: false,
-		inventory: false,
-	});
-	const [error, setError] = useState({
-		orders: null,
-		details: null,
-		inventory: null,
-	});
-	const [showNewOrderModal, setShowNewOrderModal] = useState(false);
-	const [productsInventory, setProductsInventory] = useState([]);
 
-	// Mock data for orders
-	const mockOrders = [
-		{
-			id: 1,
-			orderNumber: "SO-2025022501",
-			customer: "우성목재",
-			orderDate: "2025-02-25",
-			dueDate: "2025-03-02",
-			totalAmount: 3680000,
-			status: "pending",
-		},
-		{
-			id: 2,
-			orderNumber: "SO-2025022401",
-			customer: "대림가구",
-			orderDate: "2025-02-24",
-			dueDate: "2025-03-01",
-			totalAmount: 4260000,
-			status: "processing",
-		},
-		{
-			id: 3,
-			orderNumber: "SO-2025022301",
-			customer: "LG하우시스",
-			orderDate: "2025-02-23",
-			dueDate: "2025-02-28",
-			totalAmount: 5120000,
-			status: "shipped",
-		},
-		{
-			id: 4,
-			orderNumber: "SO-2025022201",
-			customer: "삼성인테리어",
-			orderDate: "2025-02-22",
-			dueDate: "2025-02-27",
-			totalAmount: 2950000,
-			status: "completed",
-		},
-	];
-
-	// Mock data for order details
-	const mockOrderDetails = {
-		1: {
-			id: 1,
-			orderNumber: "SO-2025022501",
-			customer: "우성목재",
-			customerContact: "042-123-4567",
-			customerEmail: "sales@woosung.co.kr",
-			shippingAddress: "대전시 서구 갈마동 123",
-			billingAddress: "대전시 서구 갈마동 123",
-			orderDate: "2025-02-25",
-			dueDate: "2025-03-02",
-			status: "pending",
-			paymentMethod: "계좌이체",
-			paymentStatus: "미결제",
-			totalAmount: 3680000,
-			taxAmount: 368000,
-			shippingAmount: 50000,
-			discountAmount: 0,
-			notes: "배송 전 연락 요망",
-			items: [
-				{
-					id: 1,
-					productCode: "P001",
-					name: "3808-3/양면 E0 18mm",
-					quantity: 50,
-					unitPrice: 45000,
-					amount: 2250000,
-				},
-				{
-					id: 2,
-					productCode: "P002",
-					name: "UV무늬목 15mm",
-					quantity: 25,
-					unitPrice: 55000,
-					amount: 1375000,
-				},
-			],
-			history: [
-				{
-					id: 1,
-					date: "2025-02-25 09:30",
-					user: "김판매",
-					action: "주문 접수",
-					notes: "고객 주문 접수",
-				},
-			],
-		},
-		2: {
-			id: 2,
-			orderNumber: "SO-2025022401",
-			customer: "대림가구",
-			customerContact: "02-234-5678",
-			customerEmail: "purchase@daelim.co.kr",
-			shippingAddress: "서울시 금천구 가산로 456",
-			billingAddress: "서울시 금천구 가산로 456",
-			orderDate: "2025-02-24",
-			dueDate: "2025-03-01",
-			status: "processing",
-			paymentMethod: "법인카드",
-			paymentStatus: "결제완료",
-			totalAmount: 4260000,
-			taxAmount: 426000,
-			shippingAmount: 60000,
-			discountAmount: 100000,
-			notes: "품질검수 필요",
-			items: [
-				{
-					id: 3,
-					productCode: "P003",
-					name: "방염합판 9mm",
-					quantity: 30,
-					unitPrice: 62000,
-					amount: 1860000,
-				},
-				{
-					id: 4,
-					productCode: "P004",
-					name: "씽크대문짝 W600",
-					quantity: 60,
-					unitPrice: 38000,
-					amount: 2280000,
-				},
-			],
-			history: [
-				{
-					id: 2,
-					date: "2025-02-24 10:15",
-					user: "김판매",
-					action: "주문 접수",
-					notes: "고객 주문 접수",
-				},
-				{
-					id: 3,
-					date: "2025-02-24 14:30",
-					user: "이경리",
-					action: "결제 확인",
-					notes: "법인카드 결제 확인",
-				},
-				{
-					id: 4,
-					date: "2025-02-25 09:10",
-					user: "박생산",
-					action: "생산 시작",
-					notes: "생산 작업 시작",
-				},
-			],
-		},
-	};
-
-	// Mock inventory data
-	const mockInventory = [
-		{
-			id: 1,
-			code: "P001",
-			name: "3808-3/양면 E0 18mm",
-			stock: 120,
-			unit: "장",
-			status: "normal",
-		},
-		{
-			id: 2,
-			code: "P002",
-			name: "UV무늬목 15mm",
-			stock: 80,
-			unit: "장",
-			status: "normal",
-		},
-		{
-			id: 3,
-			code: "P003",
-			name: "방염합판 9mm",
-			stock: 30,
-			unit: "장",
-			status: "warning",
-		},
-		{
-			id: 4,
-			code: "P004",
-			name: "씽크대문짝 W600",
-			stock: 35,
-			unit: "개",
-			status: "normal",
-		},
-	];
-
-	// Status options for filtering
-	const statusOptions = [
-		{ id: "all", name: "전체" },
-		{ id: "pending", name: "접수" },
-		{ id: "processing", name: "처리중" },
-		{ id: "shipped", name: "출고완료" },
-		{ id: "completed", name: "완료" },
-		{ id: "cancelled", name: "취소" },
-	];
-
-	// Load orders on mount
+	// 주문 데이터 불러오기 (목업 데이터)
 	useEffect(() => {
 		const fetchOrders = async () => {
-			setLoading((prev) => ({ ...prev, orders: true }));
 			try {
-				// In a real application, this would be an API call
-				// const response = await api.getOrders();
-				// setOrders(response.data);
+				setLoading(true);
+				// 실제 구현에서는 API 호출로 대체됨
+				const mockOrders = [
+					{
+						id: "ORD-20230001",
+						customerName: "대한건설",
+						orderDate: "2023-09-15",
+						requestedDate: "2023-09-30",
+						status: "completed",
+						totalAmount: 4250000,
+						items: [
+							{
+								id: 1,
+								name: "강화마루 KF153",
+								quantity: 50,
+								unit: "박스",
+								price: 55000,
+							},
+							{
+								id: 2,
+								name: "몰딩 M203",
+								quantity: 100,
+								unit: "개",
+								price: 12000,
+							},
+						],
+						customerContact: "010-1234-5678",
+						customerEmail: "contact@daehan.co.kr",
+						deliveryAddress: "서울시 강남구 테헤란로 123",
+						notes: "배송 전 연락 부탁드립니다.",
+						processSteps: [
+							{
+								id: 1,
+								name: "주문 접수",
+								status: "completed",
+								date: "2023-09-15",
+							},
+							{
+								id: 2,
+								name: "재고 확인",
+								status: "completed",
+								date: "2023-09-16",
+							},
+							{
+								id: 3,
+								name: "자재부 요청",
+								status: "completed",
+								date: "2023-09-17",
+							},
+							{
+								id: 4,
+								name: "생산부 요청",
+								status: "completed",
+								date: "2023-09-18",
+							},
+							{
+								id: 5,
+								name: "출고 준비",
+								status: "completed",
+								date: "2023-09-25",
+							},
+							{
+								id: 6,
+								name: "출고 완료",
+								status: "completed",
+								date: "2023-09-28",
+							},
+						],
+					},
+					{
+						id: "ORD-20230002",
+						customerName: "미래인테리어",
+						orderDate: "2023-09-20",
+						requestedDate: "2023-10-10",
+						status: "processing",
+						totalAmount: 3180000,
+						items: [
+							{
+								id: 1,
+								name: "강화마루 KF201",
+								quantity: 30,
+								unit: "박스",
+								price: 60000,
+							},
+							{
+								id: 2,
+								name: "몰딩 M101",
+								quantity: 80,
+								unit: "개",
+								price: 11000,
+							},
+						],
+						customerContact: "010-9876-5432",
+						customerEmail: "order@mirae.co.kr",
+						deliveryAddress: "경기도 성남시 분당구 판교로 234",
+						notes: "오전 배송 요청",
+						processSteps: [
+							{
+								id: 1,
+								name: "주문 접수",
+								status: "completed",
+								date: "2023-09-20",
+							},
+							{
+								id: 2,
+								name: "재고 확인",
+								status: "completed",
+								date: "2023-09-21",
+							},
+							{
+								id: 3,
+								name: "자재부 요청",
+								status: "completed",
+								date: "2023-09-22",
+							},
+							{
+								id: 4,
+								name: "생산부 요청",
+								status: "completed",
+								date: "2023-09-23",
+							},
+							{ id: 5, name: "출고 준비", status: "in-progress", date: null },
+							{ id: 6, name: "출고 완료", status: "pending", date: null },
+						],
+					},
+					{
+						id: "ORD-20230003",
+						customerName: "한솔건업",
+						orderDate: "2023-09-25",
+						requestedDate: "2023-10-15",
+						status: "confirmed",
+						totalAmount: 5620000,
+						items: [
+							{
+								id: 1,
+								name: "강화마루 KF305",
+								quantity: 70,
+								unit: "박스",
+								price: 65000,
+							},
+							{
+								id: 2,
+								name: "몰딩 M305",
+								quantity: 120,
+								unit: "개",
+								price: 13000,
+							},
+						],
+						customerContact: "010-2345-6789",
+						customerEmail: "info@hansol.co.kr",
+						deliveryAddress: "서울시 송파구 올림픽로 345",
+						notes: "하자 없는 제품으로 부탁드립니다.",
+						processSteps: [
+							{
+								id: 1,
+								name: "주문 접수",
+								status: "completed",
+								date: "2023-09-25",
+							},
+							{
+								id: 2,
+								name: "재고 확인",
+								status: "completed",
+								date: "2023-09-26",
+							},
+							{ id: 3, name: "자재부 요청", status: "in-progress", date: null },
+							{ id: 4, name: "생산부 요청", status: "pending", date: null },
+							{ id: 5, name: "출고 준비", status: "pending", date: null },
+							{ id: 6, name: "출고 완료", status: "pending", date: null },
+						],
+					},
+					{
+						id: "ORD-20230004",
+						customerName: "우성건설",
+						orderDate: "2023-09-28",
+						requestedDate: "2023-10-20",
+						status: "new",
+						totalAmount: 2870000,
+						items: [
+							{
+								id: 1,
+								name: "강화마루 KF120",
+								quantity: 35,
+								unit: "박스",
+								price: 52000,
+							},
+							{
+								id: 2,
+								name: "몰딩 M120",
+								quantity: 90,
+								unit: "개",
+								price: 9800,
+							},
+						],
+						customerContact: "010-3456-7890",
+						customerEmail: "order@woosung.co.kr",
+						deliveryAddress: "경기도 고양시 일산동구 중앙로 456",
+						notes: "",
+						processSteps: [
+							{
+								id: 1,
+								name: "주문 접수",
+								status: "completed",
+								date: "2023-09-28",
+							},
+							{ id: 2, name: "재고 확인", status: "pending", date: null },
+							{ id: 3, name: "자재부 요청", status: "pending", date: null },
+							{ id: 4, name: "생산부 요청", status: "pending", date: null },
+							{ id: 5, name: "출고 준비", status: "pending", date: null },
+							{ id: 6, name: "출고 완료", status: "pending", date: null },
+						],
+					},
+					{
+						id: "ORD-20230005",
+						customerName: "청담인테리어",
+						orderDate: "2023-10-01",
+						requestedDate: "2023-10-25",
+						status: "cancelled",
+						totalAmount: 3450000,
+						items: [
+							{
+								id: 1,
+								name: "강화마루 KF210",
+								quantity: 40,
+								unit: "박스",
+								price: 58000,
+							},
+							{
+								id: 2,
+								name: "몰딩 M210",
+								quantity: 100,
+								unit: "개",
+								price: 11500,
+							},
+						],
+						customerContact: "010-4567-8901",
+						customerEmail: "design@cheongdam.co.kr",
+						deliveryAddress: "서울시 강남구 청담동 123-45",
+						notes: "고객 요청으로 인한 취소",
+						processSteps: [
+							{
+								id: 1,
+								name: "주문 접수",
+								status: "completed",
+								date: "2023-10-01",
+							},
+							{
+								id: 2,
+								name: "재고 확인",
+								status: "completed",
+								date: "2023-10-02",
+							},
+							{
+								id: 3,
+								name: "자재부 요청",
+								status: "cancelled",
+								date: "2023-10-03",
+							},
+							{ id: 4, name: "생산부 요청", status: "cancelled", date: null },
+							{ id: 5, name: "출고 준비", status: "cancelled", date: null },
+							{ id: 6, name: "출고 완료", status: "cancelled", date: null },
+						],
+					},
+				];
 
-				// Using mock data for demonstration
-				setTimeout(() => {
-					setOrders(mockOrders);
-					setError((prev) => ({ ...prev, orders: null }));
-					setLoading((prev) => ({ ...prev, orders: false }));
-				}, 500);
+				// 특정 주문 상세 조회 시 해당 주문 저장
+				if (view === "details" || view === "process") {
+					const foundOrder = mockOrders.find((order) => order.id === orderId);
+					if (foundOrder) {
+						setSelectedOrder(foundOrder);
+					} else {
+						setError("요청하신 주문을 찾을 수 없습니다.");
+					}
+				}
+
+				// 모든 주문 데이터 저장
+				setOrders(mockOrders);
+				setLoading(false);
 			} catch (err) {
-				setError((prev) => ({ ...prev, orders: "Failed to load orders" }));
-				setLoading((prev) => ({ ...prev, orders: false }));
+				console.error("주문 데이터 로딩 중 오류:", err);
+				setError("주문 데이터를 불러오는 데 실패했습니다.");
+				setLoading(false);
 			}
 		};
 
 		fetchOrders();
-	}, []);
+	}, [view, orderId]);
 
-	// Load inventory data
-	useEffect(() => {
-		const fetchInventory = async () => {
-			setLoading((prev) => ({ ...prev, inventory: true }));
-			try {
-				// In a real application, this would be an API call
-				// const response = await api.getProductsInventory();
-				// setProductsInventory(response.data);
+	// 필터링된 주문 목록
+	const filteredOrders = orders
+		.filter((order) => {
+			// 검색어 필터링
+			const searchMatches =
+				order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+				order.customerName.toLowerCase().includes(searchQuery.toLowerCase());
 
-				// Using mock data for demonstration
-				setTimeout(() => {
-					setProductsInventory(mockInventory);
-					setError((prev) => ({ ...prev, inventory: null }));
-					setLoading((prev) => ({ ...prev, inventory: false }));
-				}, 500);
-			} catch (err) {
-				setError((prev) => ({
-					...prev,
-					inventory: "Failed to load inventory data",
-				}));
-				setLoading((prev) => ({ ...prev, inventory: false }));
+			// 상태 필터링
+			const statusMatches =
+				statusFilter === "all" || order.status === statusFilter;
+
+			// 날짜 범위 필터링
+			let dateMatches = true;
+			const orderDate = new Date(order.orderDate);
+			const today = new Date();
+
+			if (dateRangeFilter === "today") {
+				dateMatches = orderDate.toDateString() === today.toDateString();
+			} else if (dateRangeFilter === "week") {
+				const weekAgo = new Date();
+				weekAgo.setDate(today.getDate() - 7);
+				dateMatches = orderDate >= weekAgo;
+			} else if (dateRangeFilter === "month") {
+				const monthAgo = new Date();
+				monthAgo.setMonth(today.getMonth() - 1);
+				dateMatches = orderDate >= monthAgo;
 			}
-		};
 
-		fetchInventory();
-	}, []);
-
-	// Filter orders based on search term, date range, and status
-	useEffect(() => {
-		if (!orders || orders.length === 0) return;
-
-		let filtered = [...orders];
-
-		// Apply search term filter
-		if (searchTerm) {
-			filtered = filtered.filter(
-				(order) =>
-					order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					order.customer.toLowerCase().includes(searchTerm.toLowerCase())
-			);
-		}
-
-		// Apply date range filter
-		if (dateRange.start && dateRange.end) {
-			filtered = filtered.filter((order) => {
-				const orderDate = new Date(order.orderDate);
-				const startDate = new Date(dateRange.start);
-				const endDate = new Date(dateRange.end);
-				endDate.setHours(23, 59, 59); // Include the end date fully
-
-				return orderDate >= startDate && orderDate <= endDate;
-			});
-		}
-
-		// Apply status filter
-		if (statusFilter !== "all") {
-			filtered = filtered.filter((order) => order.status === statusFilter);
-		}
-
-		setFilteredOrders(filtered);
-
-		// Auto-select first order if available and none selected
-		if (filtered.length > 0 && !selectedOrder) {
-			handleOrderSelect(filtered[0]);
-		}
-	}, [searchTerm, dateRange, statusFilter, orders, selectedOrder]);
-
-	// Load order details when an order is selected
-	useEffect(() => {
-		if (!selectedOrder) return;
-
-		const fetchOrderDetails = async () => {
-			setLoading((prev) => ({ ...prev, details: true }));
-			try {
-				// In a real application, this would be an API call
-				// const response = await api.getOrderDetails(selectedOrder.id);
-				// setOrderDetails(response.data);
-
-				// Using mock data for demonstration
-				setTimeout(() => {
-					setOrderDetails(mockOrderDetails[selectedOrder.id] || null);
-					setError((prev) => ({ ...prev, details: null }));
-					setLoading((prev) => ({ ...prev, details: false }));
-				}, 300);
-			} catch (err) {
-				setError((prev) => ({
-					...prev,
-					details: "Failed to load order details",
-				}));
-				setLoading((prev) => ({ ...prev, details: false }));
+			return searchMatches && statusMatches && dateMatches;
+		})
+		.sort((a, b) => {
+			// 정렬
+			if (sortBy === "newest") {
+				return new Date(b.orderDate) - new Date(a.orderDate);
+			} else if (sortBy === "oldest") {
+				return new Date(a.orderDate) - new Date(b.orderDate);
+			} else if (sortBy === "amount-high") {
+				return b.totalAmount - a.totalAmount;
+			} else if (sortBy === "amount-low") {
+				return a.totalAmount - b.totalAmount;
 			}
+			return 0;
+		});
+
+	// 상태에 따른 배지 클래스
+	const getStatusBadgeClass = (status) => {
+		const classes = {
+			new: "status-new",
+			confirmed: "status-confirmed",
+			processing: "status-processing",
+			ready: "status-ready",
+			completed: "status-completed",
+			cancelled: "status-cancelled",
 		};
-
-		fetchOrderDetails();
-	}, [selectedOrder]);
-
-	// Handle order selection
-	const handleOrderSelect = useCallback((order) => {
-		setSelectedOrder(order);
-	}, []);
-
-	// Handle search input change
-	const handleSearchChange = (e) => {
-		setSearchTerm(e.target.value);
+		return `status-badge ${classes[status] || ""}`;
 	};
 
-	// Handle search form submit
-	const handleSearchSubmit = (e) => {
-		e.preventDefault();
-		// Current implementation already filters as the user types
+	// 상태 텍스트 변환
+	const getStatusText = (status) => {
+		const statuses = {
+			new: "신규",
+			confirmed: "확인됨",
+			processing: "처리중",
+			ready: "출고준비",
+			completed: "완료됨",
+			cancelled: "취소됨",
+		};
+		return statuses[status] || status;
 	};
 
-	// Handle date range change
-	const handleDateRangeChange = (field, value) => {
-		setDateRange((prev) => ({ ...prev, [field]: value }));
-	};
-
-	// Handle status filter change
-	const handleStatusFilterChange = (e) => {
-		setStatusFilter(e.target.value);
-	};
-
-	// Format currency for display
-	const formatCurrency = (amount) => {
-		return amount.toLocaleString("ko-KR") + "원";
-	};
-
-	// Format date for display
+	// 날짜 포맷팅
 	const formatDate = (dateString) => {
+		if (!dateString) return "-";
 		const options = { year: "numeric", month: "2-digit", day: "2-digit" };
 		return new Date(dateString).toLocaleDateString("ko-KR", options);
 	};
 
-	// Get status badge for rendering
-	const getStatusBadge = (status) => {
-		switch (status) {
-			case "pending":
-				return <span className="status-badge status-pending">접수</span>;
-			case "processing":
-				return <span className="status-badge status-processing">처리중</span>;
-			case "shipped":
-				return <span className="status-badge status-shipped">출고완료</span>;
-			case "completed":
-				return <span className="status-badge status-completed">완료</span>;
-			case "cancelled":
-				return <span className="status-badge status-cancelled">취소</span>;
-			default:
-				return <span className="status-badge">{status}</span>;
-		}
+	// 금액 포맷팅
+	const formatCurrency = (amount) => {
+		return new Intl.NumberFormat("ko-KR", {
+			style: "currency",
+			currency: "KRW",
+		}).format(amount);
 	};
 
-	// Check if item is in stock
-	const checkStockStatus = (productCode, quantity) => {
-		const product = productsInventory.find((p) => p.code === productCode);
+	// 주문 상세 보기로 이동
+	const handleViewDetails = (order) => {
+		navigate(`/orders/details/${order.id}`);
+	};
 
-		if (!product) return { inStock: false, status: "unknown" };
+	// 주문 처리 페이지로 이동
+	const handleProcessOrder = (order) => {
+		navigate(`/orders/process/${order.id}`);
+	};
 
-		if (product.stock >= quantity) {
-			return { inStock: true, status: "normal" };
-		} else if (product.stock > 0) {
-			return { inStock: false, status: "partial", available: product.stock };
+	// 주문 아이템 추가
+	const handleAddOrderItem = () => {
+		const newItem = {
+			id: Date.now(),
+			name: "",
+			quantity: 1,
+			unit: "개",
+			price: 0,
+		};
+
+		setFormData({
+			...formData,
+			orderItems: [...formData.orderItems, newItem],
+		});
+	};
+
+	// 주문 아이템 수정
+	const handleOrderItemChange = (itemId, field, value) => {
+		setFormData({
+			...formData,
+			orderItems: formData.orderItems.map((item) =>
+				item.id === itemId ? { ...item, [field]: value } : item
+			),
+		});
+	};
+
+	// 주문 아이템 삭제
+	const handleRemoveOrderItem = (itemId) => {
+		setFormData({
+			...formData,
+			orderItems: formData.orderItems.filter((item) => item.id !== itemId),
+		});
+	};
+
+	// 폼 필드 수정
+	const handleFormChange = (field, value) => {
+		setFormData({
+			...formData,
+			[field]: value,
+		});
+	};
+
+	// 주문 제출
+	const handleSubmitOrder = (e) => {
+		e.preventDefault();
+
+		// 필수 필드 검증
+		if (
+			!formData.customerName ||
+			!formData.customerContact ||
+			!formData.deliveryAddress ||
+			formData.orderItems.length === 0
+		) {
+			alert("필수 필드를 모두 입력해주세요.");
+			return;
+		}
+
+		// 아이템 검증
+		const invalidItems = formData.orderItems.filter(
+			(item) => !item.name || item.quantity <= 0 || item.price <= 0
+		);
+		if (invalidItems.length > 0) {
+			alert("모든 주문 항목을 올바르게 입력해주세요.");
+			return;
+		}
+
+		// 실제 구현에서는 API 호출로 주문 생성
+		showNotification({
+			title: "주문 생성",
+			message: "새 주문이 성공적으로 생성되었습니다.",
+			type: "success",
+		});
+
+		// 주문 목록으로 리다이렉트
+		navigate("/orders/list");
+	};
+
+	// 주문 처리 상태 업데이트
+	const handleUpdateProcessStep = (stepId, status) => {
+		if (!selectedOrder) return;
+
+		// 실제 구현에서는 API 호출로 상태 업데이트
+		const updatedSteps = selectedOrder.processSteps.map((step) => {
+			if (step.id === stepId) {
+				return {
+					...step,
+					status: status,
+					date:
+						status === "completed"
+							? new Date().toISOString().split("T")[0]
+							: step.date,
+				};
+			}
+			return step;
+		});
+
+		// 상태 업데이트
+		setSelectedOrder({
+			...selectedOrder,
+			processSteps: updatedSteps,
+		});
+
+		// 알림 표시
+		showNotification({
+			title: "처리 상태 업데이트",
+			message: `주문 ${selectedOrder.id}의 처리 단계가 업데이트되었습니다.`,
+			type: "success",
+		});
+	};
+
+	// 최종 주문 상태 업데이트 (모든 단계 완료 시)
+	const handleFinalizeOrder = () => {
+		if (!selectedOrder) return;
+
+		// 실제 구현에서는 API 호출로 상태 업데이트
+		const allStepsCompleted = selectedOrder.processSteps.every(
+			(step) => step.status === "completed"
+		);
+
+		if (allStepsCompleted) {
+			setSelectedOrder({
+				...selectedOrder,
+				status: "completed",
+			});
+
+			showNotification({
+				title: "주문 완료",
+				message: `주문 ${selectedOrder.id}가 성공적으로 완료되었습니다.`,
+				type: "success",
+			});
+
+			// 주문 목록으로 리다이렉트
+			navigate("/orders/list");
 		} else {
-			return { inStock: false, status: "outOfStock" };
+			alert("모든 처리 단계를 완료해야 합니다.");
 		}
 	};
 
-	// Render order list table
-	const renderOrderList = () => {
-		if (loading.orders) {
-			return <div className="loading-indicator">Loading orders...</div>;
-		}
-
-		if (error.orders) {
-			return <div className="error-message">{error.orders}</div>;
-		}
-
-		if (filteredOrders.length === 0) {
-			return <div className="no-data">검색 결과가 없습니다.</div>;
-		}
-
+	// 주문 목록 뷰 렌더링
+	const renderOrderListView = () => {
 		return (
-			<table className="order-table">
-				<thead>
-					<tr>
-						<th>주문번호</th>
-						<th>거래처</th>
-						<th>주문일자</th>
-						<th>납기일</th>
-						<th>금액</th>
-						<th>상태</th>
-					</tr>
-				</thead>
-				<tbody>
-					{filteredOrders.map((order) => (
-						<tr
-							key={order.id}
-							className={`order-item ${
-								selectedOrder?.id === order.id ? "selected" : ""
-							}`}
-							onClick={() => handleOrderSelect(order)}>
-							<td>{order.orderNumber}</td>
-							<td>{order.customer}</td>
-							<td>{formatDate(order.orderDate)}</td>
-							<td>{formatDate(order.dueDate)}</td>
-							<td>{formatCurrency(order.totalAmount)}</td>
-							<td>{getStatusBadge(order.status)}</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
-		);
-	};
+			<>
+				<div className="order-header">
+					<h1 className="module-title">주문 관리</h1>
+					<p className="order-subtitle">주문 접수, 확인 및 처리 관리</p>
 
-	// Render order details section
-	const renderOrderDetails = () => {
-		if (!selectedOrder) {
-			return (
-				<div className="no-data">주문 정보를 확인하려면 주문을 선택하세요.</div>
-			);
-		}
-
-		if (loading.details) {
-			return <div className="loading-indicator">Loading order details...</div>;
-		}
-
-		if (error.details) {
-			return <div className="error-message">{error.details}</div>;
-		}
-
-		if (!orderDetails) {
-			return <div className="no-data">상세 정보가 없습니다.</div>;
-		}
-
-		return (
-			<div className="order-details">
-				<h3 className="details-title">주문 상세 정보</h3>
-
-				<div className="details-section">
-					<h4 className="section-subtitle">기본 정보</h4>
-					<div className="details-grid">
-						<div className="details-item">
-							<span className="details-label">주문번호:</span>
-							<span className="details-value">{orderDetails.orderNumber}</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">거래처:</span>
-							<span className="details-value">{orderDetails.customer}</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">연락처:</span>
-							<span className="details-value">
-								{orderDetails.customerContact}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">이메일:</span>
-							<span className="details-value">
-								{orderDetails.customerEmail}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">주문일자:</span>
-							<span className="details-value">
-								{formatDate(orderDetails.orderDate)}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">납기일:</span>
-							<span className="details-value">
-								{formatDate(orderDetails.dueDate)}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">상태:</span>
-							<span className="details-value">
-								{getStatusBadge(orderDetails.status)}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">특이사항:</span>
-							<span className="details-value">{orderDetails.notes || "-"}</span>
-						</div>
-					</div>
-				</div>
-
-				<div className="details-section">
-					<h4 className="section-subtitle">배송 및 결제 정보</h4>
-					<div className="details-grid">
-						<div className="details-item">
-							<span className="details-label">배송지:</span>
-							<span className="details-value">
-								{orderDetails.shippingAddress}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">청구지:</span>
-							<span className="details-value">
-								{orderDetails.billingAddress}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">결제방법:</span>
-							<span className="details-value">
-								{orderDetails.paymentMethod}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">결제상태:</span>
-							<span className="details-value">
-								{orderDetails.paymentStatus}
-							</span>
-						</div>
-					</div>
-				</div>
-
-				<div className="details-section">
-					<h4 className="section-subtitle">주문 상품</h4>
-					<table className="order-items-table">
-						<thead>
-							<tr>
-								<th>제품코드</th>
-								<th>제품명</th>
-								<th>수량</th>
-								<th>단가</th>
-								<th>금액</th>
-								<th>재고상태</th>
-							</tr>
-						</thead>
-						<tbody>
-							{orderDetails.items.map((item) => {
-								const stockStatus = checkStockStatus(
-									item.productCode,
-									item.quantity
-								);
-								return (
-									<tr key={item.id}>
-										<td>{item.productCode}</td>
-										<td>{item.name}</td>
-										<td>{item.quantity}</td>
-										<td>{formatCurrency(item.unitPrice)}</td>
-										<td>{formatCurrency(item.amount)}</td>
-										<td>
-											{stockStatus.inStock ? (
-												<span className="stock-status in-stock">재고 있음</span>
-											) : stockStatus.status === "partial" ? (
-												<span className="stock-status partial-stock">
-													일부 재고 ({stockStatus.available})
-												</span>
-											) : stockStatus.status === "outOfStock" ? (
-												<span className="stock-status out-of-stock">
-													재고 없음
-												</span>
-											) : (
-												<span className="stock-status unknown">확인 필요</span>
-											)}
-										</td>
-									</tr>
-								);
-							})}
-						</tbody>
-						<tfoot>
-							<tr>
-								<td
-									colSpan="4"
-									className="summary-label">
-									소계
-								</td>
-								<td
-									colSpan="2"
-									className="summary-value">
-									{formatCurrency(
-										orderDetails.totalAmount -
-											orderDetails.taxAmount -
-											orderDetails.shippingAmount +
-											orderDetails.discountAmount
-									)}
-								</td>
-							</tr>
-							<tr>
-								<td
-									colSpan="4"
-									className="summary-label">
-									부가세
-								</td>
-								<td
-									colSpan="2"
-									className="summary-value">
-									{formatCurrency(orderDetails.taxAmount)}
-								</td>
-							</tr>
-							<tr>
-								<td
-									colSpan="4"
-									className="summary-label">
-									배송비
-								</td>
-								<td
-									colSpan="2"
-									className="summary-value">
-									{formatCurrency(orderDetails.shippingAmount)}
-								</td>
-							</tr>
-							{orderDetails.discountAmount > 0 && (
-								<tr>
-									<td
-										colSpan="4"
-										className="summary-label">
-										할인
-									</td>
-									<td
-										colSpan="2"
-										className="summary-value">
-										- {formatCurrency(orderDetails.discountAmount)}
-									</td>
-								</tr>
-							)}
-							<tr className="total-row">
-								<td
-									colSpan="4"
-									className="summary-label">
-									총 금액
-								</td>
-								<td
-									colSpan="2"
-									className="summary-value">
-									{formatCurrency(orderDetails.totalAmount)}
-								</td>
-							</tr>
-						</tfoot>
-					</table>
-				</div>
-
-				<div className="details-section">
-					<h4 className="section-subtitle">주문 처리 내역</h4>
-					{orderDetails.history && orderDetails.history.length > 0 ? (
-						<table className="order-history-table">
-							<thead>
-								<tr>
-									<th>날짜</th>
-									<th>담당자</th>
-									<th>처리내용</th>
-									<th>비고</th>
-								</tr>
-							</thead>
-							<tbody>
-								{orderDetails.history.map((history) => (
-									<tr key={history.id}>
-										<td>{history.date}</td>
-										<td>{history.user}</td>
-										<td>{history.action}</td>
-										<td>{history.notes}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					) : (
-						<div className="no-data">처리 내역이 없습니다.</div>
-					)}
-				</div>
-			</div>
-		);
-	};
-
-	// Render inventory status
-	const renderInventoryStatus = () => {
-		if (loading.inventory) {
-			return (
-				<div className="loading-indicator">Loading inventory status...</div>
-			);
-		}
-
-		if (error.inventory) {
-			return <div className="error-message">{error.inventory}</div>;
-		}
-
-		if (!productsInventory || productsInventory.length === 0) {
-			return <div className="no-data">재고 정보가 없습니다.</div>;
-		}
-
-		return (
-			<div className="inventory-status">
-				<h3 className="section-title">재고 현황</h3>
-				<table className="inventory-table">
-					<thead>
-						<tr>
-							<th>제품코드</th>
-							<th>제품명</th>
-							<th>재고</th>
-							<th>상태</th>
-						</tr>
-					</thead>
-					<tbody>
-						{productsInventory.map((product) => (
-							<tr key={product.id}>
-								<td>{product.code}</td>
-								<td>{product.name}</td>
-								<td>
-									{product.stock} {product.unit}
-								</td>
-								<td>
-									<span className={`status-badge status-${product.status}`}>
-										{product.status === "normal"
-											? "정상"
-											: product.status === "warning"
-											? "요주의"
-											: "부족"}
-									</span>
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
-		);
-	};
-
-	return (
-		<div className="order-management">
-			{/* Header section with filters */}
-			<div className="order-header">
-				<h2 className="module-title">수주 관리</h2>
-
-				<div className="order-filters">
-					<form
-						onSubmit={handleSearchSubmit}
-						className="search-form">
-						<input
-							type="text"
-							className="search-input"
-							placeholder="주문번호, 거래처명 검색"
-							value={searchTerm}
-							onChange={handleSearchChange}
-						/>
+					<div className="tab-navigation">
 						<button
-							type="submit"
-							className="search-button">
-							검색
+							className={`tab-button ${activeTab === "all" ? "active" : ""}`}
+							onClick={() => setActiveTab("all")}>
+							전체 주문
 						</button>
-					</form>
+						<button
+							className={`tab-button ${activeTab === "new" ? "active" : ""}`}
+							onClick={() => setActiveTab("new")}>
+							신규 주문
+						</button>
+						<button
+							className={`tab-button ${
+								activeTab === "processing" ? "active" : ""
+							}`}
+							onClick={() => setActiveTab("processing")}>
+							처리중
+						</button>
+						<button
+							className={`tab-button ${
+								activeTab === "completed" ? "active" : ""
+							}`}
+							onClick={() => setActiveTab("completed")}>
+							완료 주문
+						</button>
+						<button
+							className={`tab-button ${
+								activeTab === "cancelled" ? "active" : ""
+							}`}
+							onClick={() => setActiveTab("cancelled")}>
+							취소 주문
+						</button>
+					</div>
+				</div>
 
-					<div className="filter-selects">
-						<div className="filter-group date-range">
-							<label>기간:</label>
+				<div className="filter-section">
+					<h2 className="filter-title">필터</h2>
+					<div className="filter-row">
+						<div className="filter-group">
+							<label className="filter-label">검색어</label>
 							<input
-								type="date"
-								className="date-input"
-								value={dateRange.start}
-								onChange={(e) => handleDateRangeChange("start", e.target.value)}
-							/>
-							<span className="date-separator">~</span>
-							<input
-								type="date"
-								className="date-input"
-								value={dateRange.end}
-								onChange={(e) => handleDateRangeChange("end", e.target.value)}
+								type="text"
+								className="filter-input"
+								placeholder="주문번호 또는 고객명"
+								value={searchQuery}
+								onChange={(e) => setSearchQuery(e.target.value)}
 							/>
 						</div>
-
 						<div className="filter-group">
-							<label htmlFor="status-filter">상태:</label>
+							<label className="filter-label">주문 상태</label>
 							<select
-								id="status-filter"
 								className="filter-select"
 								value={statusFilter}
-								onChange={handleStatusFilterChange}>
-								{statusOptions.map((option) => (
-									<option
-										key={option.id}
-										value={option.id}>
-										{option.name}
-									</option>
-								))}
+								onChange={(e) => setStatusFilter(e.target.value)}>
+								<option value="all">전체 상태</option>
+								<option value="new">신규</option>
+								<option value="confirmed">확인됨</option>
+								<option value="processing">처리중</option>
+								<option value="ready">출고준비</option>
+								<option value="completed">완료됨</option>
+								<option value="cancelled">취소됨</option>
+							</select>
+						</div>
+						<div className="filter-group">
+							<label className="filter-label">날짜 범위</label>
+							<select
+								className="filter-select"
+								value={dateRangeFilter}
+								onChange={(e) => setDateRangeFilter(e.target.value)}>
+								<option value="all">전체 기간</option>
+								<option value="today">오늘</option>
+								<option value="week">최근 7일</option>
+								<option value="month">최근 30일</option>
+							</select>
+						</div>
+						<div className="filter-group">
+							<label className="filter-label">정렬 기준</label>
+							<select
+								className="filter-select"
+								value={sortBy}
+								onChange={(e) => setSortBy(e.target.value)}>
+								<option value="newest">최신순</option>
+								<option value="oldest">오래된순</option>
+								<option value="amount-high">금액 높은순</option>
+								<option value="amount-low">금액 낮은순</option>
 							</select>
 						</div>
 					</div>
 				</div>
 
-				<div className="order-actions">
+				<div className="order-list-section">
+					<div className="section-title">
+						<span>주문 목록</span>
+						<span className="item-count">{filteredOrders.length}개 항목</span>
+					</div>
+
+					{loading ? (
+						<div className="loading-indicator">
+							주문 데이터를 불러오는 중...
+						</div>
+					) : error ? (
+						<div className="error-message">{error}</div>
+					) : filteredOrders.length > 0 ? (
+						<table className="order-table">
+							<thead>
+								<tr>
+									<th>주문번호</th>
+									<th>고객명</th>
+									<th>주문일자</th>
+									<th>납기일자</th>
+									<th>주문상태</th>
+									<th>주문금액</th>
+									<th>작업</th>
+								</tr>
+							</thead>
+							<tbody>
+								{filteredOrders.map((order) => (
+									<tr key={order.id}>
+										<td>{order.id}</td>
+										<td>{order.customerName}</td>
+										<td>{formatDate(order.orderDate)}</td>
+										<td>{formatDate(order.requestedDate)}</td>
+										<td>
+											<span className={getStatusBadgeClass(order.status)}>
+												{getStatusText(order.status)}
+											</span>
+										</td>
+										<td>{formatCurrency(order.totalAmount)}</td>
+										<td className="action-buttons">
+											<button
+												className="btn btn-secondary"
+												onClick={() => handleViewDetails(order)}>
+												상세보기
+											</button>
+											{(order.status === "new" ||
+												order.status === "confirmed" ||
+												order.status === "processing") && (
+												<button
+													className="btn btn-primary"
+													onClick={() => handleProcessOrder(order)}>
+													처리하기
+												</button>
+											)}
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					) : (
+						<div className="no-data">검색 조건에 맞는 주문이 없습니다.</div>
+					)}
+
+					<div style={{ marginTop: "20px" }}>
+						<Link to="/orders/create">
+							<button className="btn btn-primary">새 주문 생성</button>
+						</Link>
+					</div>
+				</div>
+			</>
+		);
+	};
+
+	// 주문 생성 뷰 렌더링
+	const renderOrderCreateView = () => {
+		return (
+			<div className="order-form">
+				<h1 className="module-title">새 주문 생성</h1>
+
+				<form onSubmit={handleSubmitOrder}>
+					<div className="form-section">
+						<h2 className="form-section-title">고객 정보</h2>
+						<div className="form-row">
+							<div className="form-group">
+								<label className="form-label">고객명 *</label>
+								<input
+									type="text"
+									className="form-input"
+									value={formData.customerName}
+									onChange={(e) =>
+										handleFormChange("customerName", e.target.value)
+									}
+									required
+								/>
+							</div>
+							<div className="form-group">
+								<label className="form-label">연락처 *</label>
+								<input
+									type="text"
+									className="form-input"
+									value={formData.customerContact}
+									onChange={(e) =>
+										handleFormChange("customerContact", e.target.value)
+									}
+									required
+								/>
+							</div>
+						</div>
+						<div className="form-row">
+							<div className="form-group">
+								<label className="form-label">이메일</label>
+								<input
+									type="email"
+									className="form-input"
+									value={formData.customerEmail}
+									onChange={(e) =>
+										handleFormChange("customerEmail", e.target.value)
+									}
+								/>
+							</div>
+							<div className="form-group">
+								<label className="form-label">납기 요청일</label>
+								<input
+									type="date"
+									className="form-input"
+									value={formData.requestedDate}
+									onChange={(e) =>
+										handleFormChange("requestedDate", e.target.value)
+									}
+								/>
+							</div>
+						</div>
+						<div className="form-row">
+							<div className="form-group">
+								<label className="form-label">배송 주소 *</label>
+								<input
+									type="text"
+									className="form-input"
+									value={formData.deliveryAddress}
+									onChange={(e) =>
+										handleFormChange("deliveryAddress", e.target.value)
+									}
+									required
+								/>
+							</div>
+						</div>
+					</div>
+
+					<div className="form-section">
+						<h2 className="form-section-title">주문 항목</h2>
+
+						{formData.orderItems.length > 0 ? (
+							<table className="order-items-table">
+								<thead>
+									<tr>
+										<th>제품명</th>
+										<th>수량</th>
+										<th>단위</th>
+										<th>단가</th>
+										<th>금액</th>
+										<th>작업</th>
+									</tr>
+								</thead>
+								<tbody>
+									{formData.orderItems.map((item) => (
+										<tr key={item.id}>
+											<td>
+												<input
+													type="text"
+													className="form-input"
+													value={item.name}
+													onChange={(e) =>
+														handleOrderItemChange(
+															item.id,
+															"name",
+															e.target.value
+														)
+													}
+													required
+												/>
+											</td>
+											<td>
+												<input
+													type="number"
+													className="form-input"
+													value={item.quantity}
+													onChange={(e) =>
+														handleOrderItemChange(
+															item.id,
+															"quantity",
+															parseInt(e.target.value) || 0
+														)
+													}
+													min="1"
+													required
+												/>
+											</td>
+											<td>
+												<select
+													className="form-select"
+													value={item.unit}
+													onChange={(e) =>
+														handleOrderItemChange(
+															item.id,
+															"unit",
+															e.target.value
+														)
+													}>
+													<option value="개">개</option>
+													<option value="박스">박스</option>
+													<option value="세트">세트</option>
+													<option value="미터">미터</option>
+												</select>
+											</td>
+											<td>
+												<input
+													type="number"
+													className="form-input"
+													value={item.price}
+													onChange={(e) =>
+														handleOrderItemChange(
+															item.id,
+															"price",
+															parseInt(e.target.value) || 0
+														)
+													}
+													min="0"
+													required
+												/>
+											</td>
+											<td>{formatCurrency(item.quantity * item.price)}</td>
+											<td>
+												<button
+													type="button"
+													className="btn btn-secondary"
+													onClick={() => handleRemoveOrderItem(item.id)}>
+													삭제
+												</button>
+											</td>
+										</tr>
+									))}
+								</tbody>
+								<tfoot>
+									<tr>
+										<td
+											colSpan="4"
+											align="right">
+											<strong>총 금액:</strong>
+										</td>
+										<td colSpan="2">
+											<strong>
+												{formatCurrency(
+													formData.orderItems.reduce(
+														(sum, item) => sum + item.quantity * item.price,
+														0
+													)
+												)}
+											</strong>
+										</td>
+									</tr>
+								</tfoot>
+							</table>
+						) : (
+							<div className="no-data">주문 항목이 없습니다.</div>
+						)}
+
+						<button
+							type="button"
+							className="add-item-btn"
+							onClick={handleAddOrderItem}>
+							+ 항목 추가
+						</button>
+					</div>
+
+					<div className="form-section">
+						<h2 className="form-section-title">추가 정보</h2>
+						<div className="form-row">
+							<div className="form-group">
+								<label className="form-label">비고</label>
+								<textarea
+									className="form-textarea"
+									value={formData.notes}
+									onChange={(e) => handleFormChange("notes", e.target.value)}
+									placeholder="추가 요청사항이나 참고사항을 입력해주세요."
+								/>
+							</div>
+						</div>
+					</div>
+
+					<div
+						className="form-section"
+						style={{
+							display: "flex",
+							gap: "10px",
+							justifyContent: "flex-end",
+						}}>
+						<Link to="/orders/list">
+							<button
+								type="button"
+								className="btn btn-secondary">
+								취소
+							</button>
+						</Link>
+						<button
+							type="submit"
+							className="btn btn-primary">
+							주문 생성
+						</button>
+					</div>
+				</form>
+			</div>
+		);
+	};
+
+	// 주문 상세 뷰 렌더링
+	const renderOrderDetailsView = () => {
+		if (loading) {
+			return (
+				<div className="loading-indicator">주문 정보를 불러오는 중...</div>
+			);
+		}
+
+		if (error || !selectedOrder) {
+			return (
+				<div className="error-message">
+					{error || "주문 정보를 찾을 수 없습니다."}
+				</div>
+			);
+		}
+
+		return (
+			<div className="order-details">
+				<div className="order-details-header">
+					<div>
+						<h1 className="module-title">주문 상세 정보</h1>
+						<div className="order-id">주문번호: {selectedOrder.id}</div>
+						<div className="order-date">
+							주문일: {formatDate(selectedOrder.orderDate)}
+						</div>
+					</div>
+					<div>
+						<span className={getStatusBadgeClass(selectedOrder.status)}>
+							{getStatusText(selectedOrder.status)}
+						</span>
+					</div>
+				</div>
+
+				<div className="details-row">
+					<div className="details-col">
+						<h2 className="form-section-title">고객 정보</h2>
+						<div className="details-group">
+							<div className="details-label">고객명</div>
+							<div className="details-value">{selectedOrder.customerName}</div>
+						</div>
+						<div className="details-group">
+							<div className="details-label">연락처</div>
+							<div className="details-value">
+								{selectedOrder.customerContact}
+							</div>
+						</div>
+						<div className="details-group">
+							<div className="details-label">이메일</div>
+							<div className="details-value">
+								{selectedOrder.customerEmail || "-"}
+							</div>
+						</div>
+					</div>
+
+					<div className="details-col">
+						<h2 className="form-section-title">배송 정보</h2>
+						<div className="details-group">
+							<div className="details-label">배송 주소</div>
+							<div className="details-value">
+								{selectedOrder.deliveryAddress}
+							</div>
+						</div>
+						<div className="details-group">
+							<div className="details-label">납기 요청일</div>
+							<div className="details-value">
+								{formatDate(selectedOrder.requestedDate)}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div className="divider"></div>
+
+				<h2 className="form-section-title">주문 항목</h2>
+				<table className="order-items-table">
+					<thead>
+						<tr>
+							<th>제품명</th>
+							<th>수량</th>
+							<th>단위</th>
+							<th>단가</th>
+							<th>금액</th>
+						</tr>
+					</thead>
+					<tbody>
+						{selectedOrder.items.map((item) => (
+							<tr key={item.id}>
+								<td>{item.name}</td>
+								<td>{item.quantity}</td>
+								<td>{item.unit}</td>
+								<td>{formatCurrency(item.price)}</td>
+								<td>{formatCurrency(item.quantity * item.price)}</td>
+							</tr>
+						))}
+					</tbody>
+					<tfoot>
+						<tr>
+							<td
+								colSpan="4"
+								align="right">
+								<strong>총 금액:</strong>
+							</td>
+							<td>
+								<strong>{formatCurrency(selectedOrder.totalAmount)}</strong>
+							</td>
+						</tr>
+					</tfoot>
+				</table>
+
+				<div className="divider"></div>
+
+				<h2 className="form-section-title">처리 과정</h2>
+				<div className="process-steps">
+					{selectedOrder.processSteps.map((step) => (
+						<div
+							key={step.id}
+							className={`process-step ${
+								step.status === "completed"
+									? "completed"
+									: step.status === "in-progress"
+									? "active"
+									: ""
+							}`}>
+							<div className="step-indicator">{step.id}</div>
+							<div className="step-label">{step.name}</div>
+							<div className="step-date">{formatDate(step.date)}</div>
+						</div>
+					))}
+				</div>
+
+				{selectedOrder.notes && (
+					<>
+						<div className="divider"></div>
+						<h2 className="form-section-title">비고</h2>
+						<p>{selectedOrder.notes}</p>
+					</>
+				)}
+
+				<div className="divider"></div>
+
+				<div
+					style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+					<Link to="/orders/list">
+						<button className="btn btn-secondary">목록으로</button>
+					</Link>
+					{selectedOrder.status !== "completed" &&
+						selectedOrder.status !== "cancelled" && (
+							<button
+								className="btn btn-primary"
+								onClick={() => handleProcessOrder(selectedOrder)}>
+								처리하기
+							</button>
+						)}
+				</div>
+			</div>
+		);
+	};
+
+	// 주문 처리 뷰 렌더링
+	const renderOrderProcessView = () => {
+		if (loading) {
+			return (
+				<div className="loading-indicator">주문 정보를 불러오는 중...</div>
+			);
+		}
+
+		if (error || !selectedOrder) {
+			return (
+				<div className="error-message">
+					{error || "주문 정보를 찾을 수 없습니다."}
+				</div>
+			);
+		}
+
+		return (
+			<div className="order-details">
+				<div className="order-details-header">
+					<div>
+						<h1 className="module-title">주문 처리</h1>
+						<div className="order-id">주문번호: {selectedOrder.id}</div>
+						<div className="order-date">
+							주문일: {formatDate(selectedOrder.orderDate)}
+						</div>
+					</div>
+					<div>
+						<span className={getStatusBadgeClass(selectedOrder.status)}>
+							{getStatusText(selectedOrder.status)}
+						</span>
+					</div>
+				</div>
+
+				<div className="divider"></div>
+
+				<h2 className="form-section-title">처리 과정</h2>
+				<div className="process-steps">
+					{selectedOrder.processSteps.map((step) => (
+						<div
+							key={step.id}
+							className={`process-step ${
+								step.status === "completed"
+									? "completed"
+									: step.status === "in-progress"
+									? "active"
+									: ""
+							}`}>
+							<div className="step-indicator">{step.id}</div>
+							<div className="step-label">{step.name}</div>
+							<div className="step-date">{formatDate(step.date)}</div>
+						</div>
+					))}
+				</div>
+
+				<div className="divider"></div>
+
+				<h2 className="form-section-title">단계별 처리</h2>
+				<table className="order-table">
+					<thead>
+						<tr>
+							<th>단계</th>
+							<th>상태</th>
+							<th>완료일</th>
+							<th>작업</th>
+						</tr>
+					</thead>
+					<tbody>
+						{selectedOrder.processSteps.map((step) => (
+							<tr key={step.id}>
+								<td>{step.name}</td>
+								<td>
+									<span
+										className={`status-badge ${
+											step.status === "completed"
+												? "status-completed"
+												: step.status === "in-progress"
+												? "status-processing"
+												: step.status === "pending"
+												? "status-new"
+												: step.status === "cancelled"
+												? "status-cancelled"
+												: ""
+										}`}>
+										{step.status === "completed"
+											? "완료"
+											: step.status === "in-progress"
+											? "진행중"
+											: step.status === "pending"
+											? "대기중"
+											: step.status === "cancelled"
+											? "취소됨"
+											: step.status}
+									</span>
+								</td>
+								<td>{formatDate(step.date)}</td>
+								<td>
+									{(step.status === "pending" ||
+										step.status === "in-progress") && (
+										<div className="action-buttons">
+											{step.status === "pending" && (
+												<button
+													className="btn btn-secondary"
+													onClick={() =>
+														handleUpdateProcessStep(step.id, "in-progress")
+													}>
+													시작
+												</button>
+											)}
+											<button
+												className="btn btn-primary"
+												onClick={() =>
+													handleUpdateProcessStep(step.id, "completed")
+												}>
+												완료
+											</button>
+										</div>
+									)}
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+
+				<div className="divider"></div>
+
+				<div
+					style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+					<Link to={`/orders/details/${selectedOrder.id}`}>
+						<button className="btn btn-secondary">상세보기</button>
+					</Link>
 					<button
 						className="btn btn-primary"
-						onClick={() => setShowNewOrderModal(true)}>
-						새 주문 등록
+						onClick={handleFinalizeOrder}
+						disabled={
+							!selectedOrder.processSteps.every(
+								(step) => step.status === "completed"
+							)
+						}>
+						주문 완료 처리
 					</button>
 				</div>
 			</div>
+		);
+	};
 
-			{/* Main content area */}
-			<div className="order-content">
-				{/* Order list section */}
-				<div className="order-list-section">{renderOrderList()}</div>
+	// 현재 뷰에 맞는 컴포넌트 렌더링
+	const renderContent = () => {
+		switch (view) {
+			case "list":
+				return renderOrderListView();
+			case "create":
+				return renderOrderCreateView();
+			case "details":
+				return renderOrderDetailsView();
+			case "process":
+				return renderOrderProcessView();
+			default:
+				return renderOrderListView();
+		}
+	};
 
-				{/* Order details section */}
-				<div className="order-details-section">{renderOrderDetails()}</div>
-			</div>
-
-			{/* Inventory status section */}
-			<div className="inventory-section">{renderInventoryStatus()}</div>
-
-			{/* Action buttons for selected order */}
-			{selectedOrder && (
-				<div className="action-buttons">
-					{selectedOrder.status === "pending" && (
-						<button className="action-button process-button">주문 처리</button>
-					)}
-					{selectedOrder.status === "processing" && (
-						<button className="action-button ship-button">출고 처리</button>
-					)}
-					{selectedOrder.status === "shipped" && (
-						<button className="action-button complete-button">완료 처리</button>
-					)}
-					<button className="action-button edit-button">정보 수정</button>
-					<button className="action-button print-button">
-						거래명세서 출력
-					</button>
-					{selectedOrder.status === "pending" && (
-						<button className="action-button cancel-button">주문 취소</button>
-					)}
-				</div>
-			)}
-		</div>
-	);
+	return <div className="order-management">{renderContent()}</div>;
 };
 
 export default OrderManagement;

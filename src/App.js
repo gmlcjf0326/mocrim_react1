@@ -149,12 +149,20 @@ const AppRoutes = () => {
 						element={<Dashboard module="orders" />}
 					/>
 					<Route
-						path="management"
-						element={<OrderManagement />}
+						path="list"
+						element={<OrderManagement view="list" />}
 					/>
 					<Route
-						path="inventory"
-						element={<InventoryManagement inventoryType="product" />}
+						path="create"
+						element={<OrderManagement view="create" />}
+					/>
+					<Route
+						path="details/:orderId"
+						element={<OrderManagement view="details" />}
+					/>
+					<Route
+						path="process/:orderId"
+						element={<OrderManagement view="process" />}
 					/>
 				</Route>
 
@@ -186,6 +194,34 @@ const AppRoutes = () => {
 					path="settings"
 					element={<SettingsPage />}
 				/>
+
+				<Route path="inventory">
+					<Route
+						index
+						element={
+							<Navigate
+								to="/inventory/list"
+								replace
+							/>
+						}
+					/>
+					<Route
+						path="list"
+						element={<InventoryManagement view="list" />}
+					/>
+					<Route
+						path="scan"
+						element={<InventoryManagement view="scan" />}
+					/>
+					<Route
+						path="details/:itemId"
+						element={<InventoryManagement view="details" />}
+					/>
+					<Route
+						path="transaction/:itemId"
+						element={<InventoryManagement view="transaction" />}
+					/>
+				</Route>
 			</Route>
 
 			<Route

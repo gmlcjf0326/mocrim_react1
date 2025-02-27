@@ -1,110 +1,170 @@
-/* Dashboard styles */
+/* 대시보드 컨테이너 */
 .dashboard {
-	width: 100%;
-	min-height: calc(100vh - 120px);
-	display: flex;
-	flex-direction: column;
-	gap: 20px;
-}
-
-.page-title {
-	font-size: 1.8rem;
-	font-weight: 600;
-	margin-bottom: 20px;
-	color: #333;
-}
-
-/* Metrics cards */
-.metrics-container {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-	gap: 20px;
-	margin-bottom: 20px;
-}
-
-.metric-card {
-	background-color: white;
-	border-radius: 10px;
 	padding: 20px;
-	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+	background-color: #f5f6fa;
+}
+
+/* 대시보드 헤더 */
+.dashboard-header {
 	display: flex;
-	flex-direction: column;
-	min-height: 160px;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20px;
 }
 
-.metric-card.primary {
-	border-left: 4px solid #2980b9;
-}
-
-.metric-card.secondary {
-	border-left: 4px solid #27ae60;
-}
-
-.metric-card.success {
-	border-left: 4px solid #2ecc71;
-}
-
-.metric-card.warning {
-	border-left: 4px solid #f39c12;
-}
-
-.metric-card.danger {
-	border-left: 4px solid #e74c3c;
-}
-
-.metric-card.info {
-	border-left: 4px solid #3498db;
-}
-
-.metric-title {
-	font-size: 1rem;
-	color: #555;
-	margin-bottom: 15px;
-}
-
-.metric-value {
-	font-size: 1.8rem;
-	font-weight: 700;
+.dashboard-title {
+	font-size: 24px;
+	font-weight: 600;
 	color: #333;
-	margin-bottom: 15px;
+	margin: 0;
 }
 
-.metric-change {
-	font-size: 0.9rem;
+/* 기간 선택기 */
+.period-selector {
 	display: flex;
 	align-items: center;
-	gap: 5px;
-	color: #666;
-	margin-top: auto;
 }
 
-.metric-change.increase {
-	color: #27ae60;
+.period-select {
+	padding: 8px 12px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	background-color: white;
+	font-size: 14px;
+	color: #333;
+	cursor: pointer;
 }
 
-.metric-change.decrease {
-	color: #e74c3c;
+/* 로딩 컨테이너 */
+.loading-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	height: 300px;
 }
 
-/* Dashboard grid layout */
-.dashboard-grid {
+.loading-spinner {
+	width: 40px;
+	height: 40px;
+	border: 4px solid rgba(0, 0, 0, 0.1);
+	border-radius: 50%;
+	border-top: 4px solid #3498db;
+	animation: spin 1s linear infinite;
+	margin-bottom: 10px;
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+/* 에러 컨테이너 */
+.error-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	height: 300px;
+	gap: 20px;
+}
+
+/* 요약 카드 섹션 */
+.summary-cards {
 	display: grid;
-	grid-template-columns: 2fr 1fr;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 	gap: 20px;
 	margin-bottom: 20px;
 }
 
-.dashboard-card {
+.summary-card {
 	background-color: white;
-	border-radius: 10px;
-	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-	overflow: hidden;
+	border-radius: 8px;
+	padding: 20px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 	display: flex;
-	flex-direction: column;
-	min-height: 400px;
+	align-items: center;
 }
 
-.card-header {
+.card-icon {
+	width: 50px;
+	height: 50px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 15px;
+	font-size: 20px;
+	color: white;
+}
+
+.orders-icon {
+	background-color: #3498db;
+}
+
+.revenue-icon {
+	background-color: #2ecc71;
+}
+
+.inventory-icon {
+	background-color: #f39c12;
+}
+
+.production-icon {
+	background-color: #9b59b6;
+}
+
+.card-content {
+	flex: 1;
+}
+
+.card-title {
+	font-size: 14px;
+	color: #777;
+	margin: 0 0 5px 0;
+}
+
+.card-value {
+	font-size: 24px;
+	font-weight: 600;
+	color: #333;
+	margin: 0 0 5px 0;
+}
+
+.card-subtitle {
+	font-size: 12px;
+	color: #999;
+	margin: 0;
+}
+
+/* 대시보드 콘텐츠 레이아웃 */
+.dashboard-content {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+	gap: 20px;
+	margin-bottom: 20px;
+}
+
+@media (max-width: 1100px) {
+	.dashboard-content {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* 대시보드 섹션 */
+.dashboard-section {
+	background-color: white;
+	border-radius: 8px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+	margin-bottom: 20px;
+	overflow: hidden;
+}
+
+.section-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -112,67 +172,67 @@
 	border-bottom: 1px solid #eee;
 }
 
-.card-title {
-	font-size: 1.2rem;
+.section-title {
+	font-size: 16px;
 	font-weight: 600;
 	color: #333;
-}
-
-.card-actions {
+	margin: 0;
 	display: flex;
-	gap: 10px;
+	align-items: center;
 }
 
-/* Data table */
-.table-container {
-	padding: 15px 20px;
-	overflow-x: auto;
-	flex: 1;
+.section-icon {
+	margin-right: 8px;
+	color: #3498db;
 }
 
-.data-table {
+.view-all-link {
+	font-size: 14px;
+	color: #3498db;
+	text-decoration: none;
+}
+
+.view-all-link:hover {
+	text-decoration: underline;
+}
+
+.section-content {
+	padding: 20px;
+}
+
+/* 테이블 스타일 */
+.dashboard-table {
 	width: 100%;
 	border-collapse: collapse;
-	font-size: 14px;
 }
 
-.data-table th,
-.data-table td {
-	padding: 12px 15px;
+.dashboard-table th {
 	text-align: left;
+	padding: 10px;
+	font-size: 14px;
+	font-weight: 600;
+	color: #555;
+	border-bottom: 2px solid #eee;
+}
+
+.dashboard-table td {
+	padding: 12px 10px;
+	font-size: 14px;
+	color: #333;
 	border-bottom: 1px solid #eee;
 }
 
-.data-table th {
-	background-color: #f9f9f9;
-	color: #333;
-	font-weight: 600;
-}
-
-.data-table tr:last-child td {
+.dashboard-table tr:last-child td {
 	border-bottom: none;
 }
 
-.data-table tr:hover td {
-	background-color: #f5f5f5;
-}
-
+/* 상태 배지 */
 .status-badge {
 	display: inline-block;
-	padding: 4px 10px;
-	border-radius: 20px;
+	padding: 4px 8px;
+	border-radius: 4px;
 	font-size: 12px;
 	font-weight: 500;
-}
-
-.status-pending {
-	background-color: #fff8e1;
-	color: #f57f17;
-}
-
-.status-processing {
-	background-color: #e3f2fd;
-	color: #1976d2;
 }
 
 .status-completed {
@@ -180,190 +240,270 @@
 	color: #2e7d32;
 }
 
-/* Notification list */
-.notifications-list {
-	padding: 15px 20px;
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-	flex: 1;
-}
-
-.notification-item {
-	display: flex;
-	align-items: flex-start;
-	gap: 10px;
-	padding: 12px 15px;
-	background-color: #f9f9f9;
-	border-radius: 8px;
-	border-left: 3px solid #ddd;
-}
-
-.notification-item.warning {
-	border-left-color: #f39c12;
-	background-color: #fff8e1;
-}
-
-.notification-item.danger {
-	border-left-color: #e74c3c;
-	background-color: #ffebee;
-}
-
-.notification-item.info {
-	border-left-color: #3498db;
+.status-processing {
 	background-color: #e3f2fd;
+	color: #1565c0;
 }
 
-.notification-icon {
-	font-size: 18px;
+.status-pending {
+	background-color: #fff8e1;
+	color: #f57f17;
 }
 
-.notification-message {
-	font-size: 14px;
+.status-cancelled {
+	background-color: #ffebee;
+	color: #c62828;
+}
+
+.status-in-stock {
+	background-color: #e8f5e9;
+	color: #2e7d32;
+}
+
+.status-low-stock {
+	background-color: #fff8e1;
+	color: #f57f17;
+}
+
+.status-out-of-stock {
+	background-color: #ffebee;
+	color: #c62828;
+}
+
+.status-on-order {
+	background-color: #e3f2fd;
+	color: #1565c0;
+}
+
+/* 생산 항목 */
+.production-item {
+	padding: 15px 0;
+	border-bottom: 1px solid #eee;
+}
+
+.production-item:last-child {
+	border-bottom: none;
+}
+
+.production-info {
+	margin-bottom: 10px;
+}
+
+.production-title {
+	font-size: 16px;
+	font-weight: 600;
 	color: #333;
+	margin: 0 0 5px 0;
+}
+
+.production-details {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 15px;
+	font-size: 14px;
+	color: #777;
+	margin: 0;
+}
+
+.production-progress-container {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.production-progress-bar {
 	flex: 1;
+	height: 8px;
+	background-color: #eee;
+	border-radius: 4px;
+	overflow: hidden;
 }
 
-/* Chart container */
-.chart-container {
-	flex: 1;
-	padding: 20px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.chart-placeholder {
-	width: 100%;
-	height: 300px;
-	background-color: #f9f9f9;
-	border-radius: 8px;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	padding: 20px;
-}
-
-.chart-placeholder p {
-	color: #666;
-	margin-bottom: 20px;
-}
-
-.placeholder-bars {
-	display: flex;
-	align-items: flex-end;
-	justify-content: center;
-	gap: 40px;
-	height: 200px;
-	width: 100%;
-}
-
-.bar-wrapper {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	width: 60px;
-	height: 200px;
-}
-
-.bar {
-	width: 30px;
-	position: relative;
-}
-
-.bar.revenue {
+.production-progress-fill {
+	height: 100%;
 	background-color: #3498db;
-	z-index: 2;
-	border-radius: 3px 3px 0 0;
+	border-radius: 4px;
 }
 
-.bar.purchase {
-	background-color: #e74c3c;
-	margin-top: -15px;
-	z-index: 1;
-	border-radius: 0 0 3px 3px;
-	margin-left: 15px;
+.production-progress-text {
+	font-size: 14px;
+	font-weight: 600;
+	color: #333;
+	min-width: 40px;
+	text-align: right;
 }
 
-.month-label {
-	margin-top: 10px;
-	font-size: 12px;
-	color: #666;
+/* 차트 컨테이너 */
+.chart-container {
+	width: 100%;
 }
 
 .chart-legend {
 	display: flex;
-	justify-content: center;
-	gap: 20px;
-	margin-top: 20px;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-top: 15px;
 }
 
 .legend-item {
-	display: flex;
-	align-items: center;
-	gap: 8px;
+	flex: 1;
+	min-width: 80px;
+	text-align: center;
 }
 
-.legend-color {
-	width: 15px;
-	height: 15px;
-	border-radius: 3px;
+.legend-month {
+	font-size: 12px;
+	color: #777;
+	margin-bottom: 3px;
 }
 
-.legend-color.revenue {
-	background-color: #3498db;
-}
-
-.legend-color.purchase {
-	background-color: #e74c3c;
-}
-
-.legend-label {
+.legend-value {
 	font-size: 14px;
-	color: #555;
+	font-weight: 600;
+	color: #333;
 }
 
-/* Loading and error states */
-.loading-spinner {
+/* 일정 목록 */
+.schedule-list {
 	display: flex;
-	justify-content: center;
-	align-items: center;
-	min-height: 200px;
-	color: #666;
+	flex-direction: column;
+	gap: 15px;
 }
 
-.error-message {
-	background-color: #ffebee;
-	color: #c62828;
-	padding: 15px;
+.schedule-item {
+	display: flex;
+	gap: 15px;
+}
+
+.schedule-date {
+	min-width: 100px;
+	padding: 8px;
+	background-color: #f5f6fa;
+	border-radius: 4px;
+	font-size: 14px;
+	font-weight: 500;
+	color: #555;
+	text-align: center;
+}
+
+.schedule-content {
+	flex: 1;
+}
+
+.schedule-title {
+	font-size: 15px;
+	font-weight: 600;
+	color: #333;
+	margin-bottom: 3px;
+}
+
+.schedule-details {
+	font-size: 13px;
+	color: #777;
+}
+
+/* 빠른 액세스 섹션 */
+.quick-access-section {
+	background-color: white;
 	border-radius: 8px;
-	margin: 15px 0;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+	padding: 20px;
 }
 
-/* Responsive adjustments */
-@media (max-width: 1200px) {
-	.metrics-container {
-		grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-	}
+.quick-access-buttons {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	gap: 15px;
+	margin-top: 15px;
 }
 
-@media (max-width: 992px) {
-	.dashboard-grid {
-		grid-template-columns: 1fr;
-	}
+.quick-access-button {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+	background-color: #f5f6fa;
+	border-radius: 8px;
+	text-decoration: none;
+	transition: all 0.2s ease;
 }
 
+.quick-access-button:hover {
+	background-color: #e3f2fd;
+	transform: translateY(-2px);
+}
+
+.quick-access-icon {
+	font-size: 24px;
+	color: #3498db;
+	margin-bottom: 10px;
+}
+
+.quick-access-text {
+	font-size: 14px;
+	font-weight: 500;
+	color: #333;
+	text-align: center;
+}
+
+/* 반응형 스타일 */
 @media (max-width: 768px) {
-	.metrics-container {
+	.dashboard {
+		padding: 15px;
+	}
+
+	.summary-cards {
 		grid-template-columns: 1fr;
 	}
 
-	.placeholder-bars {
-		gap: 20px;
+	.dashboard-content {
+		grid-template-columns: 1fr;
 	}
 
-	.bar-wrapper {
-		width: 40px;
+	.quick-access-buttons {
+		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	}
+
+	.section-content {
+		padding: 15px;
+	}
+
+	.dashboard-table th,
+	.dashboard-table td {
+		padding: 10px;
+	}
+}
+
+@media (max-width: 576px) {
+	.dashboard-header {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 10px;
+	}
+
+	.period-selector {
+		width: 100%;
+	}
+
+	.period-select {
+		width: 100%;
+	}
+
+	.quick-access-buttons {
+		grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+	}
+
+	.dashboard-table {
+		font-size: 12px;
+	}
+
+	.dashboard-table th,
+	.dashboard-table td {
+		padding: 8px;
+	}
+
+	.schedule-date {
+		min-width: 80px;
 	}
 }

@@ -1,1077 +1,1077 @@
-import React, { useState, useEffect, useCallback } from "react";
-import PropTypes from "prop-types";
+import React, { useState, useEffect } from "react";
 import "./FinancialManagement.css";
 
-/**
- * FinancialManagement Component
- *
- * Comprehensive component for managing financial transactions including
- * collections (receivables) and payments (payables) with detailed tracking
- * and reporting capabilities.
- */
-const FinancialManagement = ({ type = "collection" }) => {
-	const [transactionType, setTransactionType] = useState(type);
+const FinancialManagement = () => {
+	// 상태 관리
+	const [transactionType, setTransactionType] = useState("all");
 	const [transactions, setTransactions] = useState([]);
-	const [filteredTransactions, setFilteredTransactions] = useState([]);
 	const [selectedTransaction, setSelectedTransaction] = useState(null);
-	const [transactionDetails, setTransactionDetails] = useState(null);
-	const [searchTerm, setSearchTerm] = useState("");
-	const [statusFilter, setStatusFilter] = useState("all");
-	const [dateRange, setDateRange] = useState({
-		start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-			.toISOString()
-			.split("T")[0], // 30 days ago
-		end: new Date().toISOString().split("T")[0], // today
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
+	const [showModal, setShowModal] = useState(false);
+	const [modalType, setModalType] = useState("");
+	const [filterDate, setFilterDate] = useState({
+		startDate: "",
+		endDate: "",
 	});
-	const [loading, setLoading] = useState({
-		transactions: false,
-		details: false,
-		summary: false,
+	const [filterStatus, setFilterStatus] = useState("all");
+	const [filterAmount, setFilterAmount] = useState({
+		min: "",
+		max: "",
 	});
-	const [error, setError] = useState({
-		transactions: null,
-		details: null,
-		summary: null,
-	});
-	const [showNewTransactionModal, setShowNewTransactionModal] = useState(false);
-	const [summary, setSummary] = useState({
-		total: 0,
-		completed: 0,
-		pending: 0,
-		overdue: 0,
-		today: 0,
-	});
+	const [searchQuery, setSearchQuery] = useState("");
 
-	// Mock data for collections (receivables)
-	const mockCollections = [
-		{
-			id: 1,
-			transactionNumber: "RC-2025022501",
-			counterparty: "우성목재",
-			orderReference: "SO-2025022001",
-			amount: 3680000,
-			dueDate: "2025-03-05",
-			transactionDate: "2025-02-25",
-			status: "pending",
-		},
-		{
-			id: 2,
-			transactionNumber: "RC-2025022401",
-			counterparty: "대림가구",
-			orderReference: "SO-2025022102",
-			amount: 4260000,
-			dueDate: "2025-03-01",
-			transactionDate: "2025-02-24",
-			status: "completed",
-			completionDate: "2025-02-24",
-		},
-		{
-			id: 3,
-			transactionNumber: "RC-2025022301",
-			counterparty: "LG하우시스",
-			orderReference: "SO-2025021803",
-			amount: 5120000,
-			dueDate: "2025-02-28",
-			transactionDate: "2025-02-23",
-			status: "overdue",
-		},
-		{
-			id: 4,
-			transactionNumber: "RC-2025022201",
-			counterparty: "삼성인테리어",
-			orderReference: "SO-2025021904",
-			amount: 2950000,
-			dueDate: "2025-02-26",
-			transactionDate: "2025-02-22",
-			status: "pending",
-		},
-	];
-
-	// Mock data for payments (payables)
-	const mockPayments = [
-		{
-			id: 1,
-			transactionNumber: "PY-2025022501",
-			counterparty: "동화기업",
-			invoiceReference: "INV-DO-2025020501",
-			amount: 4320000,
-			dueDate: "2025-03-05",
-			transactionDate: "2025-02-25",
-			status: "pending",
-		},
-		{
-			id: 2,
-			transactionNumber: "PY-2025022401",
-			counterparty: "한솔홈데코",
-			invoiceReference: "INV-HS-2025021901",
-			amount: 2850000,
-			dueDate: "2025-02-28",
-			transactionDate: "2025-02-24",
-			status: "completed",
-			completionDate: "2025-02-24",
-		},
-		{
-			id: 3,
-			transactionNumber: "PY-2025022301",
-			counterparty: "코스모텍",
-			invoiceReference: "INV-KS-2025020301",
-			amount: 1680000,
-			dueDate: "2025-02-27",
-			transactionDate: "2025-02-23",
-			status: "completed",
-			completionDate: "2025-02-25",
-		},
-		{
-			id: 4,
-			transactionNumber: "PY-2025022201",
-			counterparty: "디자인월",
-			invoiceReference: "INV-DW-2025020901",
-			amount: 950000,
-			dueDate: "2025-02-25",
-			transactionDate: "2025-02-22",
-			status: "overdue",
-		},
-	];
-
-	// Mock transaction details
-	const mockTransactionDetails = {
-		collections: {
-			1: {
-				id: 1,
-				transactionNumber: "RC-2025022501",
-				counterparty: "우성목재",
-				counterpartyContact: "042-123-4567",
-				customerCode: "CUS-WS001",
-				orderReference: "SO-2025022001",
-				amount: 3680000,
-				taxAmount: 368000,
-				netAmount: 3312000,
-				dueDate: "2025-03-05",
-				transactionDate: "2025-02-25",
-				status: "pending",
-				paymentMethod: "계좌이체",
-				bankAccount: "신한은행 123-456-789012",
-				bankAccountName: "목림상사",
-				description: "2025년 2월 제품 판매",
-				notes: "만기일 이틀 전 입금 확인 필요",
-				issuer: "김판매",
-				history: [
-					{
-						id: 1,
-						date: "2025-02-25 10:30",
-						user: "김판매",
-						action: "수금 등록",
-						notes: "2월 제품 판매 수금 등록",
-					},
-				],
-				relatedDocuments: [
-					{
-						id: 1,
-						type: "거래명세서",
-						reference: "SO-2025022001",
-						date: "2025-02-25",
-						status: "발행완료",
-					},
-					{
-						id: 2,
-						type: "세금계산서",
-						reference: "TXINV-2025022501",
-						date: "2025-02-25",
-						status: "발행완료",
-					},
-				],
-			},
-			2: {
-				id: 2,
-				transactionNumber: "RC-2025022401",
-				counterparty: "대림가구",
-				counterpartyContact: "02-234-5678",
-				customerCode: "CUS-DL001",
-				orderReference: "SO-2025022102",
-				amount: 4260000,
-				taxAmount: 426000,
-				netAmount: 3834000,
-				dueDate: "2025-03-01",
-				transactionDate: "2025-02-24",
-				status: "completed",
-				completionDate: "2025-02-24",
-				paymentMethod: "법인카드",
-				cardNumber: "****-****-****-1234",
-				cardCompany: "신한카드",
-				approvalNumber: "APPROVE-12345678",
-				description: "2025년 2월 씽크대문짝 판매",
-				notes: "",
-				issuer: "김판매",
-				history: [
-					{
-						id: 1,
-						date: "2025-02-24 09:30",
-						user: "김판매",
-						action: "수금 등록",
-						notes: "2월 제품 판매 수금 등록",
-					},
-					{
-						id: 2,
-						date: "2025-02-24 14:15",
-						user: "박경리",
-						action: "결제 확인",
-						notes: "법인카드 결제 확인",
-					},
-					{
-						id: 3,
-						date: "2025-02-24 14:30",
-						user: "박경리",
-						action: "거래 완료",
-						notes: "수금 완료 처리",
-					},
-				],
-				relatedDocuments: [
-					{
-						id: 1,
-						type: "거래명세서",
-						reference: "SO-2025022102",
-						date: "2025-02-24",
-						status: "발행완료",
-					},
-					{
-						id: 2,
-						type: "세금계산서",
-						reference: "TXINV-2025022401",
-						date: "2025-02-24",
-						status: "발행완료",
-					},
-				],
-			},
-		},
-		payments: {
-			1: {
-				id: 1,
-				transactionNumber: "PY-2025022501",
-				counterparty: "동화기업",
-				counterpartyContact: "02-345-6789",
-				vendorCode: "VEN-DO001",
-				invoiceReference: "INV-DO-2025020501",
-				amount: 4320000,
-				taxAmount: 432000,
-				netAmount: 3888000,
-				dueDate: "2025-03-05",
-				transactionDate: "2025-02-25",
-				status: "pending",
-				paymentMethod: "계좌이체",
-				bankAccount: "우리은행 987-654-321098",
-				bankAccountName: "동화기업",
-				description: "2025년 2월 원자재 구매",
-				notes: "입금 후 담당자에게 확인 요청",
-				issuer: "이구매",
-				history: [
-					{
-						id: 1,
-						date: "2025-02-25 11:30",
-						user: "이구매",
-						action: "결제 등록",
-						notes: "2월 원자재 구매 결제 등록",
-					},
-				],
-				relatedDocuments: [
-					{
-						id: 1,
-						type: "인보이스",
-						reference: "INV-DO-2025020501",
-						date: "2025-02-05",
-						status: "접수완료",
-					},
-				],
-			},
-			2: {
-				id: 2,
-				transactionNumber: "PY-2025022401",
-				counterparty: "한솔홈데코",
-				counterpartyContact: "02-456-7890",
-				vendorCode: "VEN-HS001",
-				invoiceReference: "INV-HS-2025021901",
-				amount: 2850000,
-				taxAmount: 285000,
-				netAmount: 2565000,
-				dueDate: "2025-02-28",
-				transactionDate: "2025-02-24",
-				status: "completed",
-				completionDate: "2025-02-24",
-				paymentMethod: "법인계좌이체",
-				bankAccount: "국민은행 456-789-012345",
-				bankAccountName: "한솔홈데코",
-				transferReference: "TRANSFER-87654321",
-				description: "2025년 2월 PB 자재 구매",
-				notes: "",
-				issuer: "이구매",
-				history: [
-					{
-						id: 1,
-						date: "2025-02-24 10:45",
-						user: "이구매",
-						action: "결제 등록",
-						notes: "2월 PB 자재 구매 결제 등록",
-					},
-					{
-						id: 2,
-						date: "2025-02-24 13:30",
-						user: "박경리",
-						action: "결제 실행",
-						notes: "계좌이체 실행",
-					},
-					{
-						id: 3,
-						date: "2025-02-24 15:20",
-						user: "박경리",
-						action: "거래 완료",
-						notes: "결제 완료 처리",
-					},
-				],
-				relatedDocuments: [
-					{
-						id: 1,
-						type: "인보이스",
-						reference: "INV-HS-2025021901",
-						date: "2025-02-19",
-						status: "접수완료",
-					},
-					{
-						id: 2,
-						type: "입금증",
-						reference: "DEP-2025022401",
-						date: "2025-02-24",
-						status: "발행완료",
-					},
-				],
-			},
-		},
-	};
-
-	// Status options for filtering
-	const statusOptions = [
-		{ id: "all", name: "전체" },
-		{ id: "pending", name: "미완료" },
-		{ id: "completed", name: "완료" },
-		{ id: "overdue", name: "연체" },
-	];
-
-	// Update component when type prop changes
+	// 거래 데이터 가져오기 (모의 데이터)
 	useEffect(() => {
-		setTransactionType(type);
-	}, [type]);
-
-	// Load transactions based on type
-	useEffect(() => {
+		// 실제 구현에서는 API 호출로 대체
 		const fetchTransactions = async () => {
-			setLoading((prev) => ({ ...prev, transactions: true }));
 			try {
-				// In a real application, this would be an API call
-				// const response = await api.getTransactions(transactionType);
-				// setTransactions(response.data);
+				setLoading(true);
+				// 모의 데이터 생성
+				const mockTransactions = [
+					{
+						id: "INV-2023-001",
+						date: "2023-10-15",
+						type: "invoice",
+						description: "10월 원자재 구매",
+						amount: 1250000,
+						status: "completed",
+						counterparty: "대한철강",
+						dueDate: "2023-11-15",
+						paymentMethod: "계좌이체",
+						category: "원자재",
+						reference: "PO-2023-089",
+						notes: "정기 구매 계약",
+						documents: [
+							{
+								id: "DOC-001",
+								name: "인보이스.pdf",
+								type: "invoice",
+								date: "2023-10-15",
+							},
+							{
+								id: "DOC-002",
+								name: "거래명세서.pdf",
+								type: "receipt",
+								date: "2023-10-15",
+							},
+						],
+						history: [
+							{ date: "2023-10-15", action: "인보이스 생성", user: "김재무" },
+							{ date: "2023-10-20", action: "결제 승인", user: "박대표" },
+							{ date: "2023-10-25", action: "결제 완료", user: "시스템" },
+						],
+					},
+					{
+						id: "PAY-2023-042",
+						date: "2023-10-10",
+						type: "payment",
+						description: "9월 전기세",
+						amount: 780000,
+						status: "completed",
+						counterparty: "한국전력",
+						dueDate: "2023-10-25",
+						paymentMethod: "자동이체",
+						category: "공과금",
+						reference: "UTIL-2023-09",
+						notes: "",
+						documents: [
+							{
+								id: "DOC-003",
+								name: "전기요금청구서.pdf",
+								type: "bill",
+								date: "2023-10-05",
+							},
+							{
+								id: "DOC-004",
+								name: "결제영수증.pdf",
+								type: "receipt",
+								date: "2023-10-10",
+							},
+						],
+						history: [
+							{ date: "2023-10-05", action: "청구서 수신", user: "시스템" },
+							{ date: "2023-10-10", action: "자동이체 완료", user: "시스템" },
+						],
+					},
+					{
+						id: "EXP-2023-103",
+						date: "2023-10-18",
+						type: "expense",
+						description: "영업팀 회식비",
+						amount: 450000,
+						status: "pending",
+						counterparty: "직원 경비 청구",
+						dueDate: "2023-10-30",
+						paymentMethod: "법인카드",
+						category: "접대비",
+						reference: "EMP-2023-045",
+						notes: "분기별 영업팀 회식",
+						documents: [
+							{
+								id: "DOC-005",
+								name: "영수증.jpg",
+								type: "receipt",
+								date: "2023-10-18",
+							},
+							{
+								id: "DOC-006",
+								name: "경비청구서.pdf",
+								type: "expense",
+								date: "2023-10-19",
+							},
+						],
+						history: [
+							{ date: "2023-10-19", action: "경비 청구", user: "이영업" },
+							{ date: "2023-10-20", action: "1차 승인", user: "김팀장" },
+						],
+					},
+					{
+						id: "REC-2023-078",
+						date: "2023-10-05",
+						type: "receipt",
+						description: "9월 제품 납품대금",
+						amount: 3450000,
+						status: "completed",
+						counterparty: "삼성전자",
+						dueDate: "2023-10-05",
+						paymentMethod: "계좌이체",
+						category: "매출",
+						reference: "SO-2023-156",
+						notes: "",
+						documents: [
+							{
+								id: "DOC-007",
+								name: "입금확인서.pdf",
+								type: "receipt",
+								date: "2023-10-05",
+							},
+							{
+								id: "DOC-008",
+								name: "세금계산서.pdf",
+								type: "invoice",
+								date: "2023-09-30",
+							},
+						],
+						history: [
+							{ date: "2023-09-30", action: "세금계산서 발행", user: "김재무" },
+							{ date: "2023-10-05", action: "입금 확인", user: "시스템" },
+						],
+					},
+					{
+						id: "INV-2023-002",
+						date: "2023-10-25",
+						type: "invoice",
+						description: "사무실 임대료",
+						amount: 2000000,
+						status: "pending",
+						counterparty: "강남빌딩",
+						dueDate: "2023-11-05",
+						paymentMethod: "계좌이체",
+						category: "임대료",
+						reference: "RENT-2023-11",
+						notes: "11월 사무실 임대료",
+						documents: [
+							{
+								id: "DOC-009",
+								name: "임대료청구서.pdf",
+								type: "invoice",
+								date: "2023-10-25",
+							},
+						],
+						history: [
+							{ date: "2023-10-25", action: "청구서 수신", user: "박총무" },
+						],
+					},
+					{
+						id: "PAY-2023-043",
+						date: "2023-10-30",
+						type: "payment",
+						description: "직원 급여",
+						amount: 12500000,
+						status: "pending",
+						counterparty: "직원급여",
+						dueDate: "2023-11-05",
+						paymentMethod: "급여이체",
+						category: "인건비",
+						reference: "SAL-2023-10",
+						notes: "10월 급여",
+						documents: [
+							{
+								id: "DOC-010",
+								name: "급여명세서.xlsx",
+								type: "payroll",
+								date: "2023-10-28",
+							},
+						],
+						history: [
+							{ date: "2023-10-28", action: "급여 계산", user: "최인사" },
+							{ date: "2023-10-29", action: "급여 승인", user: "박대표" },
+						],
+					},
+					{
+						id: "REC-2023-079",
+						date: "2023-10-12",
+						type: "receipt",
+						description: "특별 주문 선금",
+						amount: 5000000,
+						status: "completed",
+						counterparty: "LG전자",
+						dueDate: "2023-10-12",
+						paymentMethod: "계좌이체",
+						category: "선수금",
+						reference: "SO-2023-157",
+						notes: "특별 주문 프로젝트 선금",
+						documents: [
+							{
+								id: "DOC-011",
+								name: "입금확인서.pdf",
+								type: "receipt",
+								date: "2023-10-12",
+							},
+							{
+								id: "DOC-012",
+								name: "계약서.pdf",
+								type: "contract",
+								date: "2023-10-10",
+							},
+						],
+						history: [
+							{ date: "2023-10-10", action: "계약 체결", user: "김영업" },
+							{ date: "2023-10-12", action: "선금 입금 확인", user: "시스템" },
+						],
+					},
+					{
+						id: "EXP-2023-104",
+						date: "2023-10-08",
+						type: "expense",
+						description: "사무용품 구매",
+						amount: 350000,
+						status: "completed",
+						counterparty: "오피스디포",
+						dueDate: "2023-10-08",
+						paymentMethod: "법인카드",
+						category: "사무용품",
+						reference: "PUR-2023-045",
+						notes: "분기별 사무용품 구매",
+						documents: [
+							{
+								id: "DOC-013",
+								name: "영수증.pdf",
+								type: "receipt",
+								date: "2023-10-08",
+							},
+						],
+						history: [
+							{ date: "2023-10-08", action: "구매 완료", user: "박총무" },
+							{ date: "2023-10-09", action: "경비 처리", user: "김재무" },
+						],
+					},
+				];
 
-				// Using mock data for demonstration
-				setTimeout(() => {
-					setTransactions(
-						transactionType === "collection" ? mockCollections : mockPayments
-					);
-					setError((prev) => ({ ...prev, transactions: null }));
-					setLoading((prev) => ({ ...prev, transactions: false }));
-				}, 500);
+				setTransactions(mockTransactions);
+				setLoading(false);
 			} catch (err) {
-				setError((prev) => ({
-					...prev,
-					transactions: "Failed to load transactions",
-				}));
-				setLoading((prev) => ({ ...prev, transactions: false }));
-			}
-		};
-
-		const fetchSummary = async () => {
-			setLoading((prev) => ({ ...prev, summary: true }));
-			try {
-				// In a real application, this would be an API call
-				// const response = await api.getTransactionSummary(transactionType);
-				// setSummary(response.data);
-
-				// For demonstration, calculate summary from mock data
-				setTimeout(() => {
-					const data =
-						transactionType === "collection" ? mockCollections : mockPayments;
-					const summaryData = {
-						total: data.reduce((sum, item) => sum + item.amount, 0),
-						completed: data
-							.filter((item) => item.status === "completed")
-							.reduce((sum, item) => sum + item.amount, 0),
-						pending: data
-							.filter((item) => item.status === "pending")
-							.reduce((sum, item) => sum + item.amount, 0),
-						overdue: data
-							.filter((item) => item.status === "overdue")
-							.reduce((sum, item) => sum + item.amount, 0),
-						today: data
-							.filter(
-								(item) =>
-									item.transactionDate ===
-									new Date().toISOString().split("T")[0]
-							)
-							.reduce((sum, item) => sum + item.amount, 0),
-					};
-					setSummary(summaryData);
-					setError((prev) => ({ ...prev, summary: null }));
-					setLoading((prev) => ({ ...prev, summary: false }));
-				}, 500);
-			} catch (err) {
-				setError((prev) => ({
-					...prev,
-					summary: "Failed to load summary data",
-				}));
-				setLoading((prev) => ({ ...prev, summary: false }));
+				setError("거래 데이터를 불러오는 중 오류가 발생했습니다.");
+				setLoading(false);
 			}
 		};
 
 		fetchTransactions();
-		fetchSummary();
-		// Reset selections when transaction type changes
-		setSelectedTransaction(null);
-		setTransactionDetails(null);
-	}, [transactionType]);
-
-	// Filter transactions based on search term, date range, and status
-	useEffect(() => {
-		if (!transactions || transactions.length === 0) return;
-
-		let filtered = [...transactions];
-
-		// Apply search term filter
-		if (searchTerm) {
-			filtered = filtered.filter(
-				(transaction) =>
-					transaction.transactionNumber
-						.toLowerCase()
-						.includes(searchTerm.toLowerCase()) ||
-					transaction.counterparty
-						.toLowerCase()
-						.includes(searchTerm.toLowerCase()) ||
-					(transaction.orderReference &&
-						transaction.orderReference
-							.toLowerCase()
-							.includes(searchTerm.toLowerCase())) ||
-					(transaction.invoiceReference &&
-						transaction.invoiceReference
-							.toLowerCase()
-							.includes(searchTerm.toLowerCase()))
-			);
-		}
-
-		// Apply date range filter
-		if (dateRange.start && dateRange.end) {
-			filtered = filtered.filter((transaction) => {
-				const transactionDate = new Date(transaction.transactionDate);
-				const startDate = new Date(dateRange.start);
-				const endDate = new Date(dateRange.end);
-				endDate.setHours(23, 59, 59); // Include the end date fully
-
-				return transactionDate >= startDate && transactionDate <= endDate;
-			});
-		}
-
-		// Apply status filter
-		if (statusFilter !== "all") {
-			filtered = filtered.filter(
-				(transaction) => transaction.status === statusFilter
-			);
-		}
-
-		setFilteredTransactions(filtered);
-
-		// Auto-select first transaction if available and none selected
-		if (filtered.length > 0 && !selectedTransaction) {
-			handleTransactionSelect(filtered[0]);
-		}
-	}, [searchTerm, dateRange, statusFilter, transactions, selectedTransaction]);
-
-	// Load transaction details when a transaction is selected
-	useEffect(() => {
-		if (!selectedTransaction) return;
-
-		const fetchTransactionDetails = async () => {
-			setLoading((prev) => ({ ...prev, details: true }));
-			try {
-				// In a real application, this would be an API call
-				// const response = await api.getTransactionDetails(selectedTransaction.id, transactionType);
-				// setTransactionDetails(response.data);
-
-				// Using mock data for demonstration
-				setTimeout(() => {
-					const details =
-						transactionType === "collection"
-							? mockTransactionDetails.collections[selectedTransaction.id]
-							: mockTransactionDetails.payments[selectedTransaction.id];
-					setTransactionDetails(details || null);
-					setError((prev) => ({ ...prev, details: null }));
-					setLoading((prev) => ({ ...prev, details: false }));
-				}, 300);
-			} catch (err) {
-				setError((prev) => ({
-					...prev,
-					details: "Failed to load transaction details",
-				}));
-				setLoading((prev) => ({ ...prev, details: false }));
-			}
-		};
-
-		fetchTransactionDetails();
-	}, [selectedTransaction, transactionType]);
-
-	// Handle transaction selection
-	const handleTransactionSelect = useCallback((transaction) => {
-		setSelectedTransaction(transaction);
 	}, []);
 
-	// Handle search input change
-	const handleSearchChange = (e) => {
-		setSearchTerm(e.target.value);
+	// 필터링된 거래 목록
+	const filteredTransactions = transactions.filter((transaction) => {
+		// 거래 유형 필터링
+		if (transactionType !== "all" && transaction.type !== transactionType) {
+			return false;
+		}
+
+		// 상태 필터링
+		if (filterStatus !== "all" && transaction.status !== filterStatus) {
+			return false;
+		}
+
+		// 날짜 필터링
+		if (
+			filterDate.startDate &&
+			new Date(transaction.date) < new Date(filterDate.startDate)
+		) {
+			return false;
+		}
+		if (
+			filterDate.endDate &&
+			new Date(transaction.date) > new Date(filterDate.endDate)
+		) {
+			return false;
+		}
+
+		// 금액 필터링
+		if (filterAmount.min && transaction.amount < parseFloat(filterAmount.min)) {
+			return false;
+		}
+		if (filterAmount.max && transaction.amount > parseFloat(filterAmount.max)) {
+			return false;
+		}
+
+		// 검색어 필터링
+		if (searchQuery) {
+			const query = searchQuery.toLowerCase();
+			return (
+				transaction.id.toLowerCase().includes(query) ||
+				transaction.description.toLowerCase().includes(query) ||
+				transaction.counterparty.toLowerCase().includes(query)
+			);
+		}
+
+		return true;
+	});
+
+	// 거래 선택 핸들러
+	const handleSelectTransaction = (transaction) => {
+		setSelectedTransaction(transaction);
 	};
 
-	// Handle search form submit
-	const handleSearchSubmit = (e) => {
-		e.preventDefault();
-		// Current implementation already filters as the user types
+	// 모달 열기 핸들러
+	const openModal = (type) => {
+		setModalType(type);
+		setShowModal(true);
 	};
 
-	// Handle date range change
-	const handleDateRangeChange = (field, value) => {
-		setDateRange((prev) => ({ ...prev, [field]: value }));
+	// 모달 닫기 핸들러
+	const closeModal = () => {
+		setShowModal(false);
 	};
 
-	// Handle status filter change
-	const handleStatusFilterChange = (e) => {
-		setStatusFilter(e.target.value);
+	// 거래 상태 변경 핸들러
+	const handleStatusChange = (transactionId, newStatus) => {
+		setTransactions((prevTransactions) =>
+			prevTransactions.map((transaction) =>
+				transaction.id === transactionId
+					? { ...transaction, status: newStatus }
+					: transaction
+			)
+		);
+
+		if (selectedTransaction && selectedTransaction.id === transactionId) {
+			setSelectedTransaction((prev) => ({ ...prev, status: newStatus }));
+		}
+
+		alert(`거래 ${transactionId}의 상태가 ${newStatus}로 변경되었습니다.`);
 	};
 
-	// Handle transaction type toggle
-	const handleTransactionTypeToggle = (type) => {
-		if (type !== transactionType) {
-			setTransactionType(type);
+	// 거래 삭제 핸들러
+	const handleDeleteTransaction = (transactionId) => {
+		if (window.confirm("이 거래를 삭제하시겠습니까?")) {
+			setTransactions((prevTransactions) =>
+				prevTransactions.filter(
+					(transaction) => transaction.id !== transactionId
+				)
+			);
+
+			if (selectedTransaction && selectedTransaction.id === transactionId) {
+				setSelectedTransaction(null);
+			}
+
+			alert(`거래 ${transactionId}가 삭제되었습니다.`);
 		}
 	};
 
-	// Format currency for display
-	const formatCurrency = (amount) => {
-		return amount.toLocaleString("ko-KR") + "원";
+	// 거래 생성 핸들러
+	const handleCreateTransaction = (newTransaction) => {
+		// 실제 구현에서는 API 호출로 대체
+		const transaction = {
+			id: `TRX-${Date.now()}`,
+			date: new Date().toISOString().split("T")[0],
+			...newTransaction,
+			status: "pending",
+			documents: [],
+			history: [
+				{
+					date: new Date().toISOString().split("T")[0],
+					action: "거래 생성",
+					user: "현재 사용자",
+				},
+			],
+		};
+
+		// 거래 생성 핸들러 계속
+		setTransactions((prevTransactions) => [transaction, ...prevTransactions]);
+		closeModal();
+		alert("새 거래가 생성되었습니다.");
 	};
 
-	// Format date for display
+	// 거래 수정 핸들러
+	const handleEditTransaction = (updatedTransaction) => {
+		// 실제 구현에서는 API 호출로 대체
+		setTransactions((prevTransactions) =>
+			prevTransactions.map((transaction) =>
+				transaction.id === updatedTransaction.id
+					? { ...transaction, ...updatedTransaction }
+					: transaction
+			)
+		);
+
+		if (
+			selectedTransaction &&
+			selectedTransaction.id === updatedTransaction.id
+		) {
+			setSelectedTransaction((prev) => ({ ...prev, ...updatedTransaction }));
+		}
+
+		closeModal();
+		alert("거래가 수정되었습니다.");
+	};
+
+	// 거래 완료 핸들러
+	const handleCompleteTransaction = () => {
+		if (selectedTransaction) {
+			handleStatusChange(selectedTransaction.id, "completed");
+		}
+	};
+
+	// 거래 인쇄 핸들러
+	const handlePrintTransaction = () => {
+		alert("인쇄 기능이 실행되었습니다.");
+		// 실제 구현에서는 인쇄 기능 구현
+	};
+
+	// 거래 취소 핸들러
+	const handleCancelTransaction = () => {
+		if (selectedTransaction) {
+			handleStatusChange(selectedTransaction.id, "cancelled");
+		}
+	};
+
+	// 금액 포맷팅 함수
+	const formatCurrency = (amount) => {
+		return new Intl.NumberFormat("ko-KR", {
+			style: "currency",
+			currency: "KRW",
+		}).format(amount);
+	};
+
+	// 날짜 포맷팅 함수
 	const formatDate = (dateString) => {
-		const options = { year: "numeric", month: "2-digit", day: "2-digit" };
+		const options = { year: "numeric", month: "long", day: "numeric" };
 		return new Date(dateString).toLocaleDateString("ko-KR", options);
 	};
 
-	// Get status badge for rendering
-	const getStatusBadge = (status) => {
-		switch (status) {
-			case "pending":
-				return <span className="status-badge status-pending">미완료</span>;
-			case "completed":
-				return <span className="status-badge status-completed">완료</span>;
-			case "overdue":
-				return <span className="status-badge status-overdue">연체</span>;
-			default:
-				return <span className="status-badge">{status}</span>;
-		}
+	// 거래 유형 한글 변환
+	const getTransactionTypeText = (type) => {
+		const types = {
+			all: "전체",
+			invoice: "청구서",
+			payment: "지출",
+			receipt: "입금",
+			expense: "경비",
+		};
+		return types[type] || type;
 	};
 
-	// Render summary statistics
-	const renderSummary = () => {
-		if (loading.summary) {
-			return <div className="loading-indicator">Loading summary data...</div>;
-		}
-
-		if (error.summary) {
-			return <div className="error-message">{error.summary}</div>;
-		}
-
-		return (
-			<div className="summary-section">
-				<div className="summary-item">
-					<span className="summary-label">
-						총 {transactionType === "collection" ? "수금" : "지급"}액:
-					</span>
-					<span className="summary-value">{formatCurrency(summary.total)}</span>
-				</div>
-				<div className="summary-item">
-					<span className="summary-label">완료 금액:</span>
-					<span className="summary-value success">
-						{formatCurrency(summary.completed)}
-					</span>
-				</div>
-				<div className="summary-item">
-					<span className="summary-label">미완료 금액:</span>
-					<span className="summary-value warning">
-						{formatCurrency(summary.pending)}
-					</span>
-				</div>
-				<div className="summary-item">
-					<span className="summary-label">연체 금액:</span>
-					<span className="summary-value danger">
-						{formatCurrency(summary.overdue)}
-					</span>
-				</div>
-				<div className="summary-item">
-					<span className="summary-label">오늘 등록:</span>
-					<span className="summary-value info">
-						{formatCurrency(summary.today)}
-					</span>
-				</div>
-			</div>
-		);
+	// 거래 상태 한글 변환
+	const getStatusText = (status) => {
+		const statuses = {
+			all: "전체",
+			pending: "대기중",
+			completed: "완료",
+			cancelled: "취소됨",
+			overdue: "기한초과",
+		};
+		return statuses[status] || status;
 	};
 
-	// Render transaction list
-	const renderTransactionList = () => {
-		if (loading.transactions) {
-			return <div className="loading-indicator">Loading transactions...</div>;
-		}
-
-		if (error.transactions) {
-			return <div className="error-message">{error.transactions}</div>;
-		}
-
-		if (filteredTransactions.length === 0) {
-			return <div className="no-data">검색 결과가 없습니다.</div>;
-		}
-
-		return (
-			<table className="transaction-table">
-				<thead>
-					<tr>
-						<th>거래번호</th>
-						<th>거래처</th>
-						<th>참조번호</th>
-						<th>금액</th>
-						<th>거래일자</th>
-						<th>만기일</th>
-						<th>상태</th>
-					</tr>
-				</thead>
-				<tbody>
-					{filteredTransactions.map((transaction) => (
-						<tr
-							key={transaction.id}
-							className={`transaction-item ${
-								selectedTransaction?.id === transaction.id ? "selected" : ""
-							}`}
-							onClick={() => handleTransactionSelect(transaction)}>
-							<td>{transaction.transactionNumber}</td>
-							<td>{transaction.counterparty}</td>
-							<td>
-								{transaction.orderReference || transaction.invoiceReference}
-							</td>
-							<td>{formatCurrency(transaction.amount)}</td>
-							<td>{formatDate(transaction.transactionDate)}</td>
-							<td>{formatDate(transaction.dueDate)}</td>
-							<td>{getStatusBadge(transaction.status)}</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
-		);
-	};
-
-	// Render transaction details
-	const renderTransactionDetails = () => {
-		if (!selectedTransaction) {
-			return (
-				<div className="no-data">거래 정보를 확인하려면 항목을 선택하세요.</div>
-			);
-		}
-
-		if (loading.details) {
-			return (
-				<div className="loading-indicator">Loading transaction details...</div>
-			);
-		}
-
-		if (error.details) {
-			return <div className="error-message">{error.details}</div>;
-		}
-
-		if (!transactionDetails) {
-			return <div className="no-data">상세 정보가 없습니다.</div>;
-		}
-
-		return (
-			<div className="transaction-details">
-				<h3 className="details-title">
-					{transactionType === "collection" ? "수금" : "지급"} 상세 정보
-				</h3>
-
-				<div className="details-section">
-					<h4 className="section-subtitle">기본 정보</h4>
-					<div className="details-grid">
-						<div className="details-item">
-							<span className="details-label">거래번호:</span>
-							<span className="details-value">
-								{transactionDetails.transactionNumber}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">거래처:</span>
-							<span className="details-value">
-								{transactionDetails.counterparty}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">거래처코드:</span>
-							<span className="details-value">
-								{transactionType === "collection"
-									? transactionDetails.customerCode
-									: transactionDetails.vendorCode}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">연락처:</span>
-							<span className="details-value">
-								{transactionDetails.counterpartyContact}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">참조번호:</span>
-							<span className="details-value">
-								{transactionDetails.orderReference ||
-									transactionDetails.invoiceReference}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">거래일자:</span>
-							<span className="details-value">
-								{formatDate(transactionDetails.transactionDate)}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">만기일:</span>
-							<span className="details-value">
-								{formatDate(transactionDetails.dueDate)}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">상태:</span>
-							<span className="details-value">
-								{getStatusBadge(transactionDetails.status)}
-							</span>
-						</div>
-						{transactionDetails.completionDate && (
-							<div className="details-item">
-								<span className="details-label">완료일자:</span>
-								<span className="details-value">
-									{formatDate(transactionDetails.completionDate)}
-								</span>
-							</div>
-						)}
-					</div>
-				</div>
-
-				<div className="details-section">
-					<h4 className="section-subtitle">금액 정보</h4>
-					<div className="details-grid">
-						<div className="details-item">
-							<span className="details-label">공급가액:</span>
-							<span className="details-value">
-								{formatCurrency(transactionDetails.netAmount)}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">세액:</span>
-							<span className="details-value">
-								{formatCurrency(transactionDetails.taxAmount)}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">총액:</span>
-							<span className="details-value highlight">
-								{formatCurrency(transactionDetails.amount)}
-							</span>
-						</div>
-						<div className="details-item">
-							<span className="details-label">거래내용:</span>
-							<span className="details-value">
-								{transactionDetails.description}
-							</span>
-						</div>
-					</div>
-				</div>
-
-				<div className="details-section">
-					<h4 className="section-subtitle">결제 정보</h4>
-					<div className="details-grid">
-						<div className="details-item">
-							<span className="details-label">결제방법:</span>
-							<span className="details-value">
-								{transactionDetails.paymentMethod}
-							</span>
-						</div>
-						{transactionDetails.bankAccount && (
-							<div className="details-item">
-								<span className="details-label">계좌번호:</span>
-								<span className="details-value">
-									{transactionDetails.bankAccount}
-								</span>
-							</div>
-						)}
-						{transactionDetails.bankAccountName && (
-							<div className="details-item">
-								<span className="details-label">예금주:</span>
-								<span className="details-value">
-									{transactionDetails.bankAccountName}
-								</span>
-							</div>
-						)}
-						{transactionDetails.cardNumber && (
-							<div className="details-item">
-								<span className="details-label">카드번호:</span>
-								<span className="details-value">
-									{transactionDetails.cardNumber}
-								</span>
-							</div>
-						)}
-						{transactionDetails.cardCompany && (
-							<div className="details-item">
-								<span className="details-label">카드사:</span>
-								<span className="details-value">
-									{transactionDetails.cardCompany}
-								</span>
-							</div>
-						)}
-						{transactionDetails.approvalNumber && (
-							<div className="details-item">
-								<span className="details-label">승인번호:</span>
-								<span className="details-value">
-									{transactionDetails.approvalNumber}
-								</span>
-							</div>
-						)}
-						{transactionDetails.transferReference && (
-							<div className="details-item">
-								<span className="details-label">이체참조번호:</span>
-								<span className="details-value">
-									{transactionDetails.transferReference}
-								</span>
-							</div>
-						)}
-						<div className="details-item">
-							<span className="details-label">등록자:</span>
-							<span className="details-value">{transactionDetails.issuer}</span>
-						</div>
-						{transactionDetails.notes && (
-							<div className="details-item">
-								<span className="details-label">참고사항:</span>
-								<span className="details-value">
-									{transactionDetails.notes}
-								</span>
-							</div>
-						)}
-					</div>
-				</div>
-
-				<div className="details-section">
-					<h4 className="section-subtitle">처리 내역</h4>
-					{transactionDetails.history &&
-					transactionDetails.history.length > 0 ? (
-						<table className="history-table">
-							<thead>
-								<tr>
-									<th>날짜</th>
-									<th>담당자</th>
-									<th>처리내용</th>
-									<th>비고</th>
-								</tr>
-							</thead>
-							<tbody>
-								{transactionDetails.history.map((history) => (
-									<tr key={history.id}>
-										<td>{history.date}</td>
-										<td>{history.user}</td>
-										<td>{history.action}</td>
-										<td>{history.notes}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					) : (
-						<div className="no-data">처리 내역이 없습니다.</div>
-					)}
-				</div>
-
-				<div className="details-section">
-					<h4 className="section-subtitle">관련 문서</h4>
-					{transactionDetails.relatedDocuments &&
-					transactionDetails.relatedDocuments.length > 0 ? (
-						<table className="documents-table">
-							<thead>
-								<tr>
-									<th>문서 유형</th>
-									<th>참조번호</th>
-									<th>날짜</th>
-									<th>상태</th>
-									<th>작업</th>
-								</tr>
-							</thead>
-							<tbody>
-								{transactionDetails.relatedDocuments.map((document) => (
-									<tr key={document.id}>
-										<td>{document.type}</td>
-										<td>{document.reference}</td>
-										<td>{formatDate(document.date)}</td>
-										<td>{document.status}</td>
-										<td>
-											<button className="action-link">보기</button>
-											<button className="action-link">출력</button>
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					) : (
-						<div className="no-data">관련 문서가 없습니다.</div>
-					)}
-				</div>
-			</div>
-		);
+	// 거래 상태에 따른 배지 클래스
+	const getStatusBadgeClass = (status) => {
+		const classes = {
+			pending: "status-pending",
+			completed: "status-completed",
+			cancelled: "status-cancelled",
+			overdue: "status-overdue",
+		};
+		return `status-badge ${classes[status] || ""}`;
 	};
 
 	return (
 		<div className="financial-management">
-			{/* Header section */}
+			{/* 헤더 섹션 */}
 			<div className="financial-header">
-				<h2 className="module-title">
-					{transactionType === "collection" ? "수금" : "지급"} 관리
-				</h2>
+				<h1 className="module-title">재무 관리</h1>
 
+				{/* 거래 유형 선택기 */}
 				<div className="transaction-type-selector">
 					<button
 						className={`transaction-type-btn ${
-							transactionType === "collection" ? "active" : ""
+							transactionType === "all" ? "active" : ""
 						}`}
-						onClick={() => handleTransactionTypeToggle("collection")}>
-						수금 관리
+						onClick={() => setTransactionType("all")}>
+						전체
+					</button>
+					<button
+						className={`transaction-type-btn ${
+							transactionType === "invoice" ? "active" : ""
+						}`}
+						onClick={() => setTransactionType("invoice")}>
+						청구서
 					</button>
 					<button
 						className={`transaction-type-btn ${
 							transactionType === "payment" ? "active" : ""
 						}`}
-						onClick={() => handleTransactionTypeToggle("payment")}>
-						지급 관리
+						onClick={() => setTransactionType("payment")}>
+						지출
+					</button>
+					<button
+						className={`transaction-type-btn ${
+							transactionType === "receipt" ? "active" : ""
+						}`}
+						onClick={() => setTransactionType("receipt")}>
+						입금
+					</button>
+					<button
+						className={`transaction-type-btn ${
+							transactionType === "expense" ? "active" : ""
+						}`}
+						onClick={() => setTransactionType("expense")}>
+						경비
 					</button>
 				</div>
 
-				{/* Summary section */}
-				{renderSummary()}
+				{/* 필터 섹션 */}
+				<div className="filter-section">
+					<h3 className="filter-title">필터 및 검색</h3>
 
-				<div className="transaction-filters">
-					<form
-						onSubmit={handleSearchSubmit}
-						className="search-form">
-						<input
-							type="text"
-							className="search-input"
-							placeholder="거래번호, 거래처명, 참조번호 검색"
-							value={searchTerm}
-							onChange={handleSearchChange}
-						/>
-						<button
-							type="submit"
-							className="search-button">
-							검색
-						</button>
-					</form>
-
-					<div className="filter-selects">
-						<div className="filter-group date-range">
-							<label>기간:</label>
+					<div className="filter-row">
+						<div className="filter-group">
+							<label className="filter-label">검색:</label>
 							<input
-								type="date"
-								className="date-input"
-								value={dateRange.start}
-								onChange={(e) => handleDateRangeChange("start", e.target.value)}
-							/>
-							<span className="date-separator">~</span>
-							<input
-								type="date"
-								className="date-input"
-								value={dateRange.end}
-								onChange={(e) => handleDateRangeChange("end", e.target.value)}
+								type="text"
+								className="filter-input"
+								placeholder="거래 ID, 설명, 거래처 검색"
+								value={searchQuery}
+								onChange={(e) => setSearchQuery(e.target.value)}
 							/>
 						</div>
 
 						<div className="filter-group">
-							<label htmlFor="status-filter">상태:</label>
+							<label className="filter-label">상태:</label>
 							<select
-								id="status-filter"
 								className="filter-select"
-								value={statusFilter}
-								onChange={handleStatusFilterChange}>
-								{statusOptions.map((option) => (
-									<option
-										key={option.id}
-										value={option.id}>
-										{option.name}
-									</option>
-								))}
+								value={filterStatus}
+								onChange={(e) => setFilterStatus(e.target.value)}>
+								<option value="all">전체</option>
+								<option value="pending">대기중</option>
+								<option value="completed">완료</option>
+								<option value="cancelled">취소됨</option>
+								<option value="overdue">기한초과</option>
 							</select>
+						</div>
+					</div>
+
+					<div className="filter-row">
+						<div className="filter-group">
+							<label className="filter-label">시작일:</label>
+							<input
+								type="date"
+								className="filter-input"
+								value={filterDate.startDate}
+								onChange={(e) =>
+									setFilterDate({ ...filterDate, startDate: e.target.value })
+								}
+							/>
+						</div>
+
+						<div className="filter-group">
+							<label className="filter-label">종료일:</label>
+							<input
+								type="date"
+								className="filter-input"
+								value={filterDate.endDate}
+								onChange={(e) =>
+									setFilterDate({ ...filterDate, endDate: e.target.value })
+								}
+							/>
+						</div>
+					</div>
+
+					<div className="filter-row">
+						<div className="filter-group">
+							<label className="filter-label">최소 금액:</label>
+							<input
+								type="number"
+								className="filter-input"
+								placeholder="0"
+								value={filterAmount.min}
+								onChange={(e) =>
+									setFilterAmount({ ...filterAmount, min: e.target.value })
+								}
+							/>
+						</div>
+
+						<div className="filter-group">
+							<label className="filter-label">최대 금액:</label>
+							<input
+								type="number"
+								className="filter-input"
+								placeholder="무제한"
+								value={filterAmount.max}
+								onChange={(e) =>
+									setFilterAmount({ ...filterAmount, max: e.target.value })
+								}
+							/>
 						</div>
 					</div>
 				</div>
 
+				{/* 거래 액션 버튼 */}
 				<div className="transaction-actions">
 					<button
 						className="btn btn-primary"
-						onClick={() => setShowNewTransactionModal(true)}>
-						{transactionType === "collection" ? "수금 등록" : "지급 등록"}
+						onClick={() => openModal("create")}>
+						새 거래 생성
 					</button>
-					<button className="btn btn-secondary">
-						{transactionType === "collection" ? "수금 일정" : "지급 일정"}
+					<button
+						className="btn btn-secondary"
+						onClick={() => selectedTransaction && openModal("edit")}
+						disabled={!selectedTransaction}>
+						거래 수정
 					</button>
-					<button className="btn btn-secondary">보고서</button>
+					<button
+						className="btn btn-secondary"
+						onClick={() =>
+							selectedTransaction &&
+							handleDeleteTransaction(selectedTransaction.id)
+						}
+						disabled={!selectedTransaction}>
+						거래 삭제
+					</button>
+					<button
+						className="btn btn-secondary"
+						onClick={() => alert("내보내기 기능이 실행되었습니다.")}>
+						내보내기
+					</button>
 				</div>
 			</div>
 
-			{/* Main content area */}
+			{/* 메인 콘텐츠 영역 */}
 			<div className="financial-content">
-				{/* Transaction list section */}
+				{/* 거래 목록 섹션 */}
 				<div className="transaction-list-section">
-					{renderTransactionList()}
+					<h2 className="section-title">
+						거래 목록
+						<span className="item-count">
+							{filteredTransactions.length}개 항목
+						</span>
+					</h2>
+
+					{loading ? (
+						<div className="loading-indicator">데이터를 불러오는 중...</div>
+					) : error ? (
+						<div className="error-message">{error}</div>
+					) : filteredTransactions.length === 0 ? (
+						<div className="no-data">표시할 거래가 없습니다.</div>
+					) : (
+						<table className="transaction-table">
+							<thead>
+								<tr>
+									<th>ID</th>
+									<th>날짜</th>
+									<th>유형</th>
+									<th>설명</th>
+									<th>거래처</th>
+									<th>금액</th>
+									<th>상태</th>
+								</tr>
+							</thead>
+							<tbody>
+								{filteredTransactions.map((transaction) => (
+									<tr
+										key={transaction.id}
+										className={
+											selectedTransaction &&
+											selectedTransaction.id === transaction.id
+												? "selected"
+												: ""
+										}
+										onClick={() => handleSelectTransaction(transaction)}>
+										<td>{transaction.id}</td>
+										<td>{formatDate(transaction.date)}</td>
+										<td>{getTransactionTypeText(transaction.type)}</td>
+										<td>{transaction.description}</td>
+										<td>{transaction.counterparty}</td>
+										<td>{formatCurrency(transaction.amount)}</td>
+										<td>
+											<span className={getStatusBadgeClass(transaction.status)}>
+												{getStatusText(transaction.status)}
+											</span>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					)}
 				</div>
 
-				{/* Transaction details section */}
-				<div className="transaction-details-section">
-					{renderTransactionDetails()}
-				</div>
+				{/* 거래 상세 정보 섹션 */}
+				{selectedTransaction ? (
+					<div className="transaction-details-section">
+						<h2 className="details-title">거래 상세 정보</h2>
+
+						<div className="details-section">
+							<h3 className="section-subtitle">기본 정보</h3>
+							<div className="details-item">
+								<span className="details-label">거래 ID:</span>
+								<span className="details-value">{selectedTransaction.id}</span>
+							</div>
+							<div className="details-item">
+								<span className="details-label">날짜:</span>
+								<span className="details-value">
+									{formatDate(selectedTransaction.date)}
+								</span>
+							</div>
+							<div className="details-item">
+								<span className="details-label">유형:</span>
+								<span className="details-value">
+									{getTransactionTypeText(selectedTransaction.type)}
+								</span>
+							</div>
+							<div className="details-item">
+								<span className="details-label">상태:</span>
+								<span className="details-value">
+									<span
+										className={getStatusBadgeClass(selectedTransaction.status)}>
+										{getStatusText(selectedTransaction.status)}
+									</span>
+								</span>
+							</div>
+							<div className="details-item">
+								<span className="details-label">설명:</span>
+								<span className="details-value">
+									{selectedTransaction.description}
+								</span>
+							</div>
+							<div className="details-item">
+								<span className="details-label">거래처:</span>
+								<span className="details-value">
+									{selectedTransaction.counterparty}
+								</span>
+							</div>
+							<div className="details-item">
+								<span className="details-label">결제 방법:</span>
+								<span className="details-value">
+									{selectedTransaction.paymentMethod}
+								</span>
+							</div>
+							<div className="details-item">
+								<span className="details-label">카테고리:</span>
+								<span className="details-value">
+									{selectedTransaction.category}
+								</span>
+							</div>
+							<div className="details-item">
+								<span className="details-label">참조:</span>
+								<span className="details-value">
+									{selectedTransaction.reference}
+								</span>
+							</div>
+							{selectedTransaction.notes && (
+								<div className="details-item">
+									<span className="details-label">메모:</span>
+									<span className="details-value">
+										{selectedTransaction.notes}
+									</span>
+								</div>
+							)}
+						</div>
+
+						<div className="details-section">
+							<h3 className="section-subtitle">금액 정보</h3>
+							<div className="transaction-summary">
+								<div className="summary-item">
+									<div className="summary-label">금액</div>
+									<div className="summary-value">
+										{formatCurrency(selectedTransaction.amount)}
+									</div>
+								</div>
+								<div className="summary-item">
+									<div className="summary-label">마감일</div>
+									<div className="summary-value">
+										{formatDate(selectedTransaction.dueDate)}
+									</div>
+								</div>
+								<div className="summary-item total">
+									<div className="summary-label">총액</div>
+									<div className="summary-value">
+										{formatCurrency(selectedTransaction.amount)}
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div className="details-section">
+							<h3 className="section-subtitle">거래 내역</h3>
+							<table className="history-table">
+								<thead>
+									<tr>
+										<th>날짜</th>
+										<th>작업</th>
+										<th>사용자</th>
+									</tr>
+								</thead>
+								<tbody>
+									{selectedTransaction.history.map((item, index) => (
+										<tr key={index}>
+											<td>{formatDate(item.date)}</td>
+											<td>{item.action}</td>
+											<td>{item.user}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+
+						<div className="details-section">
+							<h3 className="section-subtitle">문서</h3>
+							<table className="documents-table">
+								<thead>
+									<tr>
+										<th>문서명</th>
+										<th>유형</th>
+										<th>날짜</th>
+										<th>작업</th>
+									</tr>
+								</thead>
+								<tbody>
+									{selectedTransaction.documents.map((doc) => (
+										<tr key={doc.id}>
+											<td>{doc.name}</td>
+											<td>{doc.type}</td>
+											<td>{formatDate(doc.date)}</td>
+											<td>
+												<button
+													className="action-link"
+													onClick={() =>
+														alert("문서 보기 기능이 실행되었습니다.")
+													}>
+													보기
+												</button>
+												<button
+													className="action-link"
+													onClick={() =>
+														alert("문서 다운로드 기능이 실행되었습니다.")
+													}>
+													다운로드
+												</button>
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+							<button
+								className="action-link"
+								style={{ marginTop: "10px" }}
+								onClick={() => alert("문서 추가 기능이 실행되었습니다.")}>
+								+ 문서 추가
+							</button>
+						</div>
+
+						<div className="transaction-detail-actions">
+							{selectedTransaction.status === "pending" && (
+								<button
+									className="action-button complete-button"
+									onClick={handleCompleteTransaction}>
+									거래 완료
+								</button>
+							)}
+							<button
+								className="action-button print-button"
+								onClick={handlePrintTransaction}>
+								인쇄
+							</button>
+							{selectedTransaction.status !== "cancelled" && (
+								<button
+									className="action-button cancel-button"
+									onClick={handleCancelTransaction}>
+									거래 취소
+								</button>
+							)}
+						</div>
+					</div>
+				) : (
+					<div className="transaction-details-section">
+						<div className="no-data">
+							거래를 선택하여 상세 정보를 확인하세요.
+						</div>
+					</div>
+				)}
 			</div>
 
-			{/* Action buttons for selected transaction */}
-			{selectedTransaction && (
-				<div className="action-buttons">
-					{selectedTransaction.status === "pending" && (
-						<button className="action-button complete-button">
-							{transactionType === "collection" ? "수금 완료" : "지급 완료"}{" "}
-							처리
-						</button>
-					)}
-					{selectedTransaction.status === "overdue" && (
-						<button className="action-button overdue-button">연체 처리</button>
-					)}
-					<button className="action-button edit-button">정보 수정</button>
-					<button className="action-button print-button">영수증 출력</button>
-					{selectedTransaction.status === "pending" && (
-						<button className="action-button cancel-button">취소</button>
-					)}
+			{/* 모달 */}
+			{showModal && (
+				<div
+					className="modal-overlay"
+					onClick={closeModal}>
+					<div
+						className="modal-container"
+						onClick={(e) => e.stopPropagation()}>
+						<div className="modal-header">
+							<h2 className="modal-title">
+								{modalType === "create" ? "새 거래 생성" : "거래 수정"}
+							</h2>
+							<button
+								className="modal-close"
+								onClick={closeModal}>
+								&times;
+							</button>
+						</div>
+						<div className="modal-body">
+							{/* 여기에 거래 생성/수정 폼 구현 */}
+							<div className="filter-row">
+								<div className="filter-group">
+									<label className="filter-label">유형:</label>
+									<select className="filter-select">
+										<option value="invoice">청구서</option>
+										<option value="payment">지출</option>
+										<option value="receipt">입금</option>
+										<option value="expense">경비</option>
+									</select>
+								</div>
+								<div className="filter-group">
+									<label className="filter-label">날짜:</label>
+									<input
+										type="date"
+										className="filter-input"
+									/>
+								</div>
+							</div>
+
+							<div className="filter-row">
+								<div className="filter-group">
+									<label className="filter-label">설명:</label>
+									<input
+										type="text"
+										className="filter-input"
+										placeholder="거래 설명"
+									/>
+								</div>
+								<div className="filter-group">
+									<label className="filter-label">금액:</label>
+									<input
+										type="number"
+										className="filter-input"
+										placeholder="0"
+									/>
+								</div>
+							</div>
+
+							<div className="filter-row">
+								<div className="filter-group">
+									<label className="filter-label">거래처:</label>
+									<input
+										type="text"
+										className="filter-input"
+										placeholder="거래처명"
+									/>
+								</div>
+								<div className="filter-group">
+									<label className="filter-label">마감일:</label>
+									<input
+										type="date"
+										className="filter-input"
+									/>
+								</div>
+							</div>
+
+							<div className="filter-row">
+								<div className="filter-group">
+									<label className="filter-label">결제 방법:</label>
+									<select className="filter-select">
+										<option value="계좌이체">계좌이체</option>
+										<option value="법인카드">법인카드</option>
+										<option value="현금">현금</option>
+										<option value="자동이체">자동이체</option>
+									</select>
+								</div>
+								<div className="filter-group">
+									<label className="filter-label">카테고리:</label>
+									<select className="filter-select">
+										<option value="원자재">원자재</option>
+										<option value="공과금">공과금</option>
+										<option value="인건비">인건비</option>
+										<option value="임대료">임대료</option>
+										<option value="사무용품">사무용품</option>
+										<option value="접대비">접대비</option>
+										<option value="매출">매출</option>
+										<option value="선수금">선수금</option>
+									</select>
+								</div>
+							</div>
+
+							<div className="filter-row">
+								<div className="filter-group">
+									<label className="filter-label">참조:</label>
+									<input
+										type="text"
+										className="filter-input"
+										placeholder="참조 번호"
+									/>
+								</div>
+							</div>
+
+							<div className="filter-row">
+								<div
+									className="filter-group"
+									style={{ width: "100%" }}>
+									<label className="filter-label">메모:</label>
+									<textarea
+										className="filter-input"
+										placeholder="추가 메모"
+										style={{
+											width: "100%",
+											height: "80px",
+											resize: "vertical",
+										}}></textarea>
+								</div>
+							</div>
+						</div>
+						<div className="modal-footer">
+							<button
+								className="btn btn-secondary"
+								onClick={closeModal}>
+								취소
+							</button>
+							<button
+								className="btn btn-primary"
+								onClick={() => {
+									if (modalType === "create") {
+										// 실제 구현에서는 폼 데이터를 수집하여 전달
+										handleCreateTransaction({
+											type: "invoice",
+											description: "새 거래",
+											amount: 100000,
+											counterparty: "거래처명",
+											dueDate: new Date().toISOString().split("T")[0],
+											paymentMethod: "계좌이체",
+											category: "기타",
+											reference: "",
+											notes: "",
+										});
+									} else {
+										// 실제 구현에서는 폼 데이터를 수집하여 전달
+										handleEditTransaction({
+											...selectedTransaction,
+											description: "수정된 거래",
+										});
+									}
+								}}>
+								{modalType === "create" ? "생성" : "수정"}
+							</button>
+						</div>
+					</div>
 				</div>
 			)}
 		</div>
 	);
-};
-
-FinancialManagement.propTypes = {
-	type: PropTypes.oneOf(["collection", "payment"]),
 };
 
 export default FinancialManagement;
