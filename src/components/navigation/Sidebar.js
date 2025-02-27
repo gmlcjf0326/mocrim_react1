@@ -22,14 +22,6 @@ const Sidebar = ({
 					<>
 						<li className="sidebar-menu-item">
 							<NavLink
-								to="/purchase/dashboard"
-								className={({ isActive }) => (isActive ? "active" : "")}>
-								<span className="sidebar-icon">📊</span>
-								{!collapsed && <span className="sidebar-label">대시보드</span>}
-							</NavLink>
-						</li>
-						<li className="sidebar-menu-item">
-							<NavLink
 								to="/purchase/vendors"
 								className={({ isActive }) => (isActive ? "active" : "")}>
 								<span className="sidebar-icon">🏢</span>
@@ -58,19 +50,19 @@ const Sidebar = ({
 								)}
 							</NavLink>
 						</li>
-					</>
-				);
-			case "production":
-				return (
-					<>
 						<li className="sidebar-menu-item">
 							<NavLink
-								to="/production/dashboard"
+								to="/purchase/dashboard"
 								className={({ isActive }) => (isActive ? "active" : "")}>
 								<span className="sidebar-icon">📊</span>
 								{!collapsed && <span className="sidebar-label">대시보드</span>}
 							</NavLink>
 						</li>
+					</>
+				);
+			case "production":
+				return (
+					<>
 						<li className="sidebar-menu-item">
 							<NavLink
 								to="/production/woodesty"
@@ -101,19 +93,19 @@ const Sidebar = ({
 								)}
 							</NavLink>
 						</li>
-					</>
-				);
-			case "orders":
-				return (
-					<>
 						<li className="sidebar-menu-item">
 							<NavLink
-								to="/orders/dashboard"
+								to="/production/dashboard"
 								className={({ isActive }) => (isActive ? "active" : "")}>
 								<span className="sidebar-icon">📊</span>
 								{!collapsed && <span className="sidebar-label">대시보드</span>}
 							</NavLink>
 						</li>
+					</>
+				);
+			case "orders":
+				return (
+					<>
 						<li className="sidebar-menu-item">
 							<NavLink
 								to="/orders/management"
@@ -132,20 +124,19 @@ const Sidebar = ({
 								)}
 							</NavLink>
 						</li>
-					</>
-				);
-
-			case "financial":
-				return (
-					<>
 						<li className="sidebar-menu-item">
 							<NavLink
-								to="/financial/dashboard"
+								to="/orders/dashboard"
 								className={({ isActive }) => (isActive ? "active" : "")}>
 								<span className="sidebar-icon">📊</span>
 								{!collapsed && <span className="sidebar-label">대시보드</span>}
 							</NavLink>
 						</li>
+					</>
+				);
+			case "financial":
+				return (
+					<>
 						<li className="sidebar-menu-item">
 							<NavLink
 								to="/financial/collection"
@@ -160,6 +151,14 @@ const Sidebar = ({
 								className={({ isActive }) => (isActive ? "active" : "")}>
 								<span className="sidebar-icon">💸</span>
 								{!collapsed && <span className="sidebar-label">지급 관리</span>}
+							</NavLink>
+						</li>
+						<li className="sidebar-menu-item">
+							<NavLink
+								to="/financial/dashboard"
+								className={({ isActive }) => (isActive ? "active" : "")}>
+								<span className="sidebar-icon">📊</span>
+								{!collapsed && <span className="sidebar-label">대시보드</span>}
 							</NavLink>
 						</li>
 					</>
@@ -192,7 +191,7 @@ const Sidebar = ({
 						</li>
 						<li className="sidebar-menu-item">
 							<NavLink
-								to="/purchase/dashboard"
+								to="/purchase/vendors"
 								className={({ isActive }) => (isActive ? "active" : "")}>
 								<span className="sidebar-icon">📦</span>
 								{!collapsed && <span className="sidebar-label">매입 관리</span>}
@@ -200,7 +199,7 @@ const Sidebar = ({
 						</li>
 						<li className="sidebar-menu-item">
 							<NavLink
-								to="/production/dashboard"
+								to="/production/woodesty"
 								className={({ isActive }) => (isActive ? "active" : "")}>
 								<span className="sidebar-icon">🏭</span>
 								{!collapsed && <span className="sidebar-label">생산 관리</span>}
@@ -208,7 +207,7 @@ const Sidebar = ({
 						</li>
 						<li className="sidebar-menu-item">
 							<NavLink
-								to="/orders/dashboard"
+								to="/orders/management"
 								className={({ isActive }) => (isActive ? "active" : "")}>
 								<span className="sidebar-icon">📋</span>
 								{!collapsed && (
@@ -218,7 +217,7 @@ const Sidebar = ({
 						</li>
 						<li className="sidebar-menu-item">
 							<NavLink
-								to="/financial/dashboard"
+								to="/financial/collection"
 								className={({ isActive }) => (isActive ? "active" : "")}>
 								<span className="sidebar-icon">💰</span>
 								{!collapsed && (

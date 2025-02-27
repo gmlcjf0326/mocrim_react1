@@ -75,19 +75,7 @@ const AppRoutes = () => {
 				/>
 
 				<Route path="purchase">
-					<Route
-						index
-						element={
-							<Navigate
-								to="/purchase/dashboard"
-								replace
-							/>
-						}
-					/>
-					<Route
-						path="dashboard"
-						element={<Dashboard module="purchase" />}
-					/>
+					{/* Removed dashboard redirect */}
 					<Route
 						path="vendors"
 						element={<VendorManagement initialVendorType="vendor" />}
@@ -100,22 +88,15 @@ const AppRoutes = () => {
 						path="inventory"
 						element={<InventoryManagement inventoryType="raw-material" />}
 					/>
+					{/* Keep dashboard as an explicit route */}
+					<Route
+						path="dashboard"
+						element={<Dashboard module="purchase" />}
+					/>
 				</Route>
 
 				<Route path="production">
-					<Route
-						index
-						element={
-							<Navigate
-								to="/production/dashboard"
-								replace
-							/>
-						}
-					/>
-					<Route
-						path="dashboard"
-						element={<Dashboard module="production" />}
-					/>
+					{/* Removed dashboard redirect */}
 					<Route
 						path="woodesty"
 						element={<ProductionManagement initialProductionType="woodesty" />}
@@ -132,54 +113,32 @@ const AppRoutes = () => {
 							<ProductionManagement initialProductionType="daehwadong" />
 						}
 					/>
+					{/* Keep dashboard as an explicit route */}
+					<Route
+						path="dashboard"
+						element={<Dashboard module="production" />}
+					/>
 				</Route>
 
 				<Route path="orders">
+					{/* Removed dashboard redirect */}
 					<Route
-						index
-						element={
-							<Navigate
-								to="/orders/dashboard"
-								replace
-							/>
-						}
+						path="management"
+						element={<OrderManagement />}
 					/>
+					<Route
+						path="inventory"
+						element={<InventoryManagement inventoryType="product" />}
+					/>
+					{/* Keep dashboard as an explicit route */}
 					<Route
 						path="dashboard"
 						element={<Dashboard module="orders" />}
 					/>
-					<Route
-						path="list"
-						element={<OrderManagement view="list" />}
-					/>
-					<Route
-						path="create"
-						element={<OrderManagement view="create" />}
-					/>
-					<Route
-						path="details/:orderId"
-						element={<OrderManagement view="details" />}
-					/>
-					<Route
-						path="process/:orderId"
-						element={<OrderManagement view="process" />}
-					/>
 				</Route>
 
 				<Route path="financial">
-					<Route
-						index
-						element={
-							<Navigate
-								to="/financial/dashboard"
-								replace
-							/>
-						}
-					/>
-					<Route
-						path="dashboard"
-						element={<Dashboard module="financial" />}
-					/>
+					{/* Removed dashboard redirect */}
 					<Route
 						path="collection"
 						element={<FinancialManagement type="collection" />}
@@ -188,40 +147,17 @@ const AppRoutes = () => {
 						path="payment"
 						element={<FinancialManagement type="payment" />}
 					/>
+					{/* Keep dashboard as an explicit route */}
+					<Route
+						path="dashboard"
+						element={<Dashboard module="financial" />}
+					/>
 				</Route>
 
 				<Route
 					path="settings"
 					element={<SettingsPage />}
 				/>
-
-				<Route path="inventory">
-					<Route
-						index
-						element={
-							<Navigate
-								to="/inventory/list"
-								replace
-							/>
-						}
-					/>
-					<Route
-						path="list"
-						element={<InventoryManagement view="list" />}
-					/>
-					<Route
-						path="scan"
-						element={<InventoryManagement view="scan" />}
-					/>
-					<Route
-						path="details/:itemId"
-						element={<InventoryManagement view="details" />}
-					/>
-					<Route
-						path="transaction/:itemId"
-						element={<InventoryManagement view="transaction" />}
-					/>
-				</Route>
 			</Route>
 
 			<Route
