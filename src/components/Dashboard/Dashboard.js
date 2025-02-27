@@ -237,11 +237,28 @@ const Dashboard = ({ module = "dashboard" }) => {
 	 */
 	const renderMetricsCards = () => {
 		if (loading) {
-			return <div className="loading-spinner">데이터를 불러오는 중...</div>;
+			return (
+				<div
+					className="loading-spinner"
+					style={{ padding: "30px", textAlign: "center", color: "#555" }}>
+					데이터를 불러오는 중...
+				</div>
+			);
 		}
 
 		if (error) {
-			return <div className="error-message">{error}</div>;
+			return (
+				<div
+					className="error-message"
+					style={{
+						padding: "15px",
+						backgroundColor: "#ffebee",
+						color: "#c62828",
+						borderRadius: "4px",
+					}}>
+					{error}
+				</div>
+			);
 		}
 
 		switch (module) {
@@ -502,7 +519,9 @@ const Dashboard = ({ module = "dashboard" }) => {
 			<div className="chart-container">
 				{/* Chart placeholder - in a real app, this would be populated with a chart library */}
 				<div className="chart-placeholder">
-					<p>월별 매출/매입 차트가 이 곳에 표시됩니다</p>
+					<p style={{ color: "#555", fontSize: "1rem", fontWeight: "500" }}>
+						월별 매출/매입 차트가 이 곳에 표시됩니다
+					</p>
 					<div className="placeholder-bars">
 						<div className="bar-wrapper">
 							<div
