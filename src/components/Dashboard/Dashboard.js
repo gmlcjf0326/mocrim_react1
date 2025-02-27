@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import "./Dashboard.css";
+import SalesChart from "../Charts/SalesChart";
+import ProfitChart from "../Charts/ProfitChart";
 
 /**
  * Dashboard Component
@@ -115,6 +117,26 @@ const Dashboard = ({ module = "dashboard" }) => {
 		{ id: 4, type: "info", message: "신규 견적 요청 (3건)" },
 	];
 
+	// Mock data for SalesChart
+	const mockSalesData = [
+		{ name: "1월", 매출: 200000, 매입: 120000 },
+		{ name: "2월", 매출: 220000, 매입: 130000 },
+		{ name: "3월", 매출: 250000, 매입: 140000 },
+		{ name: "4월", 매출: 280000, 매입: 150000 },
+		{ name: "5월", 매출: 300000, 매입: 160000 },
+		{ name: "6월", 매출: 320000, 매입: 170000 },
+	];
+
+	// Mock data for ProfitChart
+	const mockProfitData = [
+		{ name: "1월", 수익: 80000, 비용: 50000 },
+		{ name: "2월", 수익: 90000, 비용: 55000 },
+		{ name: "3월", 수익: 110000, 비용: 60000 },
+		{ name: "4월", 수익: 130000, 비용: 65000 },
+		{ name: "5월", 수익: 140000, 비용: 70000 },
+		{ name: "6월", 수익: 150000, 비용: 75000 },
+	];
+
 	// Quick access buttons configuration
 	const quickAccessButtons = useMemo(
 		() => [
@@ -180,7 +202,7 @@ const Dashboard = ({ module = "dashboard" }) => {
 			setError("Failed to load dashboard data");
 			setLoading(false);
 		}
-	}, [module, mockMetricsData, mockRecentActivities, mockNotifications]);
+	}, [module]);
 
 	// Load dashboard data on module change
 	useEffect(() => {
@@ -231,181 +253,143 @@ const Dashboard = ({ module = "dashboard" }) => {
 		[navigate]
 	);
 
+	const renderMetricCard = (title, value, change, isIncrease) => (
+		<div className="metric-card primary">
+			<div className="metric-title">{title}</div>
+			<div className="metric-value">{value}</div>
+			<div className={`metric-change ${isIncrease ? "increase" : "decrease"}`}>
+				<span>{isIncrease ? "↑" : "↓"}</span> 전월 대비 {change}%
+			</div>
+		</div>
+	);
+
 	/**
 	 * Render metrics cards based on the current module
 	 * @returns {JSX.Element} The appropriate metrics cards for the current module
 	 */
 	const renderMetricsCards = () => {
 		if (loading) {
-			return (
-				<div
-					className="loading-spinner"
-					style={{ padding: "30px", textAlign: "center", color: "#555" }}>
-					데이터를 불러오는 중...
-				</div>
-			);
+			return <div className="loading-spinner">데이터를 불러오는 중...</div>;
 		}
 
 		if (error) {
-			return (
-				<div
-					className="error-message"
-					style={{
-						padding: "15px",
-						backgroundColor: "#ffebee",
-						color: "#c62828",
-						borderRadius: "4px",
-					}}>
-					{error}
-				</div>
-			);
+			return <div className="error-message">{error}</div>;
 		}
 
 		switch (module) {
 			case "purchase":
 				return (
 					<>
-						<div className="metric-card primary">
-							<div className="metric-title">이번 달 총 매입액</div>
-							<div className="metric-value">
-								{formatCurrency(metrics.totalPurchase)}
-							</div>
-							<div className="metric-change increase">
-								<span>↑</span> 전월 대비 {metrics.monthlyGrowth}% 증가
-							</div>
-						</div>
-						<div className="metric-card secondary">
-							<div className="metric-title">이번 달 발주 건수</div>
-							<div className="metric-value">{metrics.orderCount}건</div>
-							<div className="metric-change increase">
-								<span>↑</span> 전월 대비 5.2% 증가
-							</div>
-						</div>
-						<div className="metric-card warning">
-							<div className="metric-title">원재료 부족 알림</div>
-							<div className="metric-value">{metrics.lowStockAlerts}건</div>
-							<div className="metric-change">
-								<span>⚠️</span> 조치 필요
-							</div>
-						</div>
+						{renderMetricCard(
+							"이번 달 총 매입액",
+							formatCurrency(metrics.totalPurchase),
+							metrics.monthlyGrowth,
+							true
+						)}
+						{renderMetricCard(
+							"이번 달 발주 건수",
+							metrics.orderCount,
+							5.2,
+							true
+						)}
+						{renderMetricCard(
+							"원재료 부족 알림",
+							metrics.lowStockAlerts,
+							0,
+							false
+						)}
 					</>
 				);
 			case "production":
 				return (
 					<>
-						<div className="metric-card primary">
-							<div className="metric-title">이번 달 총 생산량</div>
-							<div className="metric-value">{metrics.totalProduction}장</div>
-							<div className="metric-change increase">
-								<span>↑</span> 전월 대비 {metrics.monthlyGrowth}% 증가
-							</div>
-						</div>
-						<div className="metric-card secondary">
-							<div className="metric-title">우드에스티 생산 건수</div>
-							<div className="metric-value">{metrics.woodestyProduction}건</div>
-							<div className="metric-change increase">
-								<span>↑</span> 전월 대비 6.9% 증가
-							</div>
-						</div>
-						<div className="metric-card success">
-							<div className="metric-title">임가공업체 현황</div>
-							<div className="metric-value">{metrics.activeProcessors}개</div>
-							<div className="metric-change">
-								<span>✓</span> 모두 정상 가동 중
-							</div>
-						</div>
+						{renderMetricCard(
+							"이번 달 총 생산량",
+							metrics.totalProduction,
+							metrics.monthlyGrowth,
+							true
+						)}
+						{renderMetricCard(
+							"우드에스티 생산 건수",
+							metrics.woodestyProduction,
+							6.9,
+							true
+						)}
+						{renderMetricCard(
+							"임가공업체 현황",
+							metrics.activeProcessors,
+							0,
+							false
+						)}
 					</>
 				);
 			case "orders":
 				return (
 					<>
-						<div className="metric-card primary">
-							<div className="metric-title">이번 달 총 수주액</div>
-							<div className="metric-value">
-								{formatCurrency(metrics.totalSales)}
-							</div>
-							<div className="metric-change increase">
-								<span>↑</span> 전월 대비 {metrics.monthlyGrowth}% 증가
-							</div>
-						</div>
-						<div className="metric-card secondary">
-							<div className="metric-title">이번 달 출고 건수</div>
-							<div className="metric-value">{metrics.orderCount}건</div>
-							<div className="metric-change increase">
-								<span>↑</span> 전월 대비 8.7% 증가
-							</div>
-						</div>
-						<div className="metric-card info">
-							<div className="metric-title">오늘 배달 예정</div>
-							<div className="metric-value">{metrics.deliveryCount}건</div>
-							<div className="metric-change">
-								<span>🚚</span> 배달 진행 중
-							</div>
-						</div>
+						{renderMetricCard(
+							"이번 달 총 수주액",
+							formatCurrency(metrics.totalSales),
+							metrics.monthlyGrowth,
+							true
+						)}
+						{renderMetricCard(
+							"이번 달 총 매출액",
+							formatCurrency(metrics.totalSales),
+							metrics.monthlyGrowth,
+							true
+						)}
+						{renderMetricCard(
+							"이번 달 영업이익",
+							formatCurrency(metrics.operatingProfit),
+							22.8,
+							true
+						)}
 					</>
 				);
 			case "financial":
 				return (
 					<>
-						<div className="metric-card primary">
-							<div className="metric-title">이번 달 총 수금액</div>
-							<div className="metric-value">
-								{formatCurrency(metrics.totalCollection)}
-							</div>
-							<div className="metric-change increase">
-								<span>↑</span> 전월 대비 {metrics.monthlyGrowth}% 증가
-							</div>
-						</div>
-						<div className="metric-card secondary">
-							<div className="metric-title">이번 달 총 지급액</div>
-							<div className="metric-value">
-								{formatCurrency(metrics.totalPayment)}
-							</div>
-							<div className="metric-change increase">
-								<span>↑</span> 전월 대비 {metrics.monthlyPaymentGrowth}% 증가
-							</div>
-						</div>
-						<div className="metric-card success">
-							<div className="metric-title">미수금 현황</div>
-							<div className="metric-value">
-								{formatCurrency(metrics.outstandingAmount)}
-							</div>
-							<div className="metric-change decrease">
-								<span>↓</span> 전월 대비 {metrics.outstandingReduction}% 감소
-							</div>
-						</div>
+						{renderMetricCard(
+							"이번 달 총 수금액",
+							formatCurrency(metrics.totalCollection),
+							metrics.monthlyGrowth,
+							true
+						)}
+						{renderMetricCard(
+							"이번 달 총 지급액",
+							formatCurrency(metrics.totalPayment),
+							metrics.monthlyPaymentGrowth,
+							true
+						)}
+						{renderMetricCard(
+							"미수금 현황",
+							formatCurrency(metrics.outstandingAmount),
+							metrics.outstandingReduction,
+							false
+						)}
 					</>
 				);
 			default:
 				return (
 					<>
-						<div className="metric-card primary">
-							<div className="metric-title">이번 달 총 매출액</div>
-							<div className="metric-value">
-								{formatCurrency(metrics.totalSales)}
-							</div>
-							<div className="metric-change increase">
-								<span>↑</span> 전월 대비 {metrics.monthlyGrowth}% 증가
-							</div>
-						</div>
-						<div className="metric-card secondary">
-							<div className="metric-title">이번 달 총 매입액</div>
-							<div className="metric-value">
-								{formatCurrency(metrics.totalPurchase)}
-							</div>
-							<div className="metric-change increase">
-								<span>↑</span> 전월 대비 12.5% 증가
-							</div>
-						</div>
-						<div className="metric-card success">
-							<div className="metric-title">이번 달 영업이익</div>
-							<div className="metric-value">
-								{formatCurrency(metrics.operatingProfit)}
-							</div>
-							<div className="metric-change increase">
-								<span>↑</span> 전월 대비 22.8% 증가
-							</div>
-						</div>
+						{renderMetricCard(
+							"이번 달 총 매출액",
+							formatCurrency(metrics.totalSales),
+							metrics.monthlyGrowth,
+							true
+						)}
+						{renderMetricCard(
+							"이번 달 총 매입액",
+							formatCurrency(metrics.totalPurchase),
+							12.5,
+							true
+						)}
+						{renderMetricCard(
+							"이번 달 영업이익",
+							formatCurrency(metrics.operatingProfit),
+							22.8,
+							true
+						)}
 					</>
 				);
 		}
@@ -519,9 +503,7 @@ const Dashboard = ({ module = "dashboard" }) => {
 			<div className="chart-container">
 				{/* Chart placeholder - in a real app, this would be populated with a chart library */}
 				<div className="chart-placeholder">
-					<p style={{ color: "#555", fontSize: "1rem", fontWeight: "500" }}>
-						월별 매출/매입 차트가 이 곳에 표시됩니다
-					</p>
+					<p>월별 매출/매입 차트가 이 곳에 표시됩니다</p>
 					<div className="placeholder-bars">
 						<div className="bar-wrapper">
 							<div
@@ -594,7 +576,7 @@ const Dashboard = ({ module = "dashboard" }) => {
 	}, []);
 
 	return (
-		<div className="dashboard">
+		<div className="dashboard-container">
 			<h2 className="page-title">{getDashboardTitle()}</h2>
 
 			<div className="metrics-container">{renderMetricsCards()}</div>
@@ -620,14 +602,14 @@ const Dashboard = ({ module = "dashboard" }) => {
 				</div>
 			</div>
 
-			<div className="dashboard-card">
-				<div className="card-header">
-					<h3 className="card-title">매출/매입 추이</h3>
-					<div className="card-actions">
-						<button className="btn btn-primary">상세 분석</button>
-					</div>
+			<div className="charts-grid-container">
+				<div className="chart-container">
+					<SalesChart data={mockSalesData} />
 				</div>
-				{renderChart()}
+
+				<div className="chart-container">
+					<ProfitChart data={mockProfitData} />
+				</div>
 			</div>
 		</div>
 	);

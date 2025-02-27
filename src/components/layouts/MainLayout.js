@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNotification } from "../../contexts/NotificationContext";
 import "./MainLayout.css";
+import PropTypes from "prop-types";
 
 // Import navigation components
 import Header from "../navigation/Header";
@@ -14,7 +15,7 @@ import NotificationPanel from "../common/NotificationPanel";
  * MainLayout component - provides the layout structure for all authenticated pages
  * Includes header, sidebar, notification system and outlet for page content
  */
-const MainLayout = () => {
+const MainLayout = ({ children }) => {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 	const { user, logout } = useAuth();
@@ -109,6 +110,10 @@ const MainLayout = () => {
 			<NotificationPanel notifications={notifications} />
 		</div>
 	);
+};
+
+MainLayout.propTypes = {
+	children: PropTypes.node.isRequired,
 };
 
 export default MainLayout;

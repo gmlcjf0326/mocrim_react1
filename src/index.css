@@ -185,3 +185,104 @@ a:hover {
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
 	background: rgba(255, 255, 255, 0.3);
 }
+
+/* 전체 텍스트 가시성 향상을 위한 스타일 */
+body {
+	color: #333333; /* 기본 텍스트 색상을 더 진한 색상으로 변경 */
+	font-weight: 400; /* 기본 폰트 두께 조정 */
+}
+
+/* 테이블 스타일 개선 */
+table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+th {
+	background-color: #f5f7fa;
+	color: #1a1a1a; /* 테이블 헤더 색상 진하게 */
+	font-weight: 600;
+	padding: 12px 15px;
+	text-align: left;
+	border-bottom: 2px solid #e0e0e0;
+}
+
+td {
+	padding: 10px 15px;
+	border-bottom: 1px solid #e0e0e0;
+	color: #333333; /* 테이블 셀 텍스트 색상 진하게 */
+}
+
+/* 상태 표시 스타일 강화 */
+.status-completed,
+.status-approved,
+.status-success {
+	color: #2e7d32;
+	font-weight: 500;
+	background-color: rgba(46, 125, 50, 0.1);
+	padding: 4px 8px;
+	border-radius: 4px;
+}
+
+.status-pending,
+.status-processing {
+	color: #ed6c02;
+	font-weight: 500;
+	background-color: rgba(237, 108, 2, 0.1);
+	padding: 4px 8px;
+	border-radius: 4px;
+}
+
+.status-cancelled,
+.status-rejected {
+	color: #d32f2f;
+	font-weight: 500;
+	background-color: rgba(211, 47, 47, 0.1);
+	padding: 4px 8px;
+	border-radius: 4px;
+}
+
+/* 버튼 스타일 개선 */
+button {
+	font-weight: 500;
+	color: #ffffff;
+}
+
+/* 카드 및 컨테이너 스타일 개선 */
+.card,
+.container,
+.panel {
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+	border-radius: 8px;
+}
+
+/* 헤더 및 제목 스타일 강화 */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	color: #1a1a1a;
+	font-weight: 600;
+}
+
+/* 필터 및 검색 영역 스타일 개선 */
+.filter-section input,
+.filter-section select {
+	border: 1px solid #cccccc;
+	padding: 8px 12px;
+	border-radius: 4px;
+	color: #333333;
+}
+
+/* 링크 스타일 개선 */
+a {
+	color: #0277bd;
+	font-weight: 500;
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}

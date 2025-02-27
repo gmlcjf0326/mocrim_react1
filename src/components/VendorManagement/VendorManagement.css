@@ -21,22 +21,22 @@
 	gap: 10px;
 	margin-bottom: 15px;
 }
-
 .vendor-type-btn {
-	padding: 12px 24px;
+	padding: 8px 16px;
+	font-size: 14px;
+	font-weight: 500;
+	color: #666;
 	background-color: #f5f5f5;
 	border: 1px solid #ddd;
 	border-radius: 4px;
-	font-weight: 500;
-	font-size: 15px;
 	cursor: pointer;
-	transition: all 0.2s ease;
 }
 
 .vendor-type-btn.active {
-	background-color: #3498db;
-	color: white;
-	border-color: #3498db;
+	color: #fff;
+	background-color: #1890ff;
+	border-color: #1890ff;
+	font-weight: 600;
 }
 
 .search-form {

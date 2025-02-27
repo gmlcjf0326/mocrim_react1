@@ -1139,6 +1139,55 @@ const VendorManagement = ({ initialVendorType = "vendor" }) => {
 		);
 	};
 
+	// VendorManagement 컴포넌트 내부의 useEffect 추가
+	useEffect(() => {
+		// 경로 변경에 따른 vendorType 변경 이벤트 리스너
+		const handleVendorTypeChange = (event) => {
+			const { vendorType: newVendorType } = event.detail;
+			if (newVendorType !== vendorType) {
+				setVendorType(newVendorType);
+				// 필요한 경우 여기서 데이터를 다시 불러오는 함수 호출
+				fetchVendorData(newVendorType);
+			}
+		};
+
+		// 이벤트 리스너 등록
+		document.addEventListener("vendorTypeChange", handleVendorTypeChange);
+
+		// 컴포넌트 언마운트 시 이벤트 리스너 제거
+		return () => {
+			document.removeEventListener("vendorTypeChange", handleVendorTypeChange);
+		};
+	}, [vendorType]);
+
+	// 데이터를 불러오는 함수 (기존 함수가 있다면 그것을 사용)
+	const fetchVendorData = (type) => {
+		// 여기서 type에 따라 적절한 데이터를 불러오는 로직 구현
+		// 예: API 호출 또는 상태 업데이트
+		console.log(`Fetching ${type} data...`);
+
+		// 예시: 데이터 로딩 상태 설정
+		setLoading(true);
+
+		// 예시: API 호출 (실제 구현에 맞게 수정 필요)
+		fetch(`/api/${type}s`)
+			.then((response) => response.json())
+			.then((data) => {
+				// 데이터 상태 업데이트
+				setVendors(data);
+				setLoading(false);
+			})
+			.catch((error) => {
+				console.error(`Error fetching ${type} data:`, error);
+				setError(
+					`${
+						type === "vendor" ? "매입사" : "임가공사"
+					} 데이터를 불러오는 중 오류가 발생했습니다.`
+				);
+				setLoading(false);
+			});
+	};
+
 	return (
 		<div className="vendor-management">
 			{/* Vendor search section */}
@@ -1148,6 +1197,7 @@ const VendorManagement = ({ initialVendorType = "vendor" }) => {
 						className={`vendor-type-btn ${
 							vendorType === "vendor" ? "active" : ""
 						}`}
+						data-type="vendor"
 						onClick={() => handleVendorTypeToggle("vendor")}>
 						매입사
 					</button>
@@ -1155,6 +1205,7 @@ const VendorManagement = ({ initialVendorType = "vendor" }) => {
 						className={`vendor-type-btn ${
 							vendorType === "processor" ? "active" : ""
 						}`}
+						data-type="processor"
 						onClick={() => handleVendorTypeToggle("processor")}>
 						임가공사
 					</button>

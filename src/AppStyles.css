@@ -8,6 +8,40 @@
 	background-color: #f5f6fa;
 }
 
+/* 전체 앱 레이아웃 수정 */
+.app-container {
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+	width: 100%;
+	overflow-x: hidden;
+	background-color: #f5f6fa;
+}
+
+/* 메인 컨테이너 (사이드바 + 콘텐츠) */
+.main-container {
+	display: flex;
+	flex: 1;
+	width: 100%;
+}
+
+/* 콘텐츠 영역 */
+.content {
+	flex: 1;
+	padding: 20px;
+	overflow-y: auto;
+	min-height: calc(100vh - 60px); /* 헤더 높이 고려 */
+}
+
+/* 모든 컨테이너에 적용할 기본 스타일 */
+.container,
+.card,
+.panel {
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+	overflow: hidden; /* 내용 넘침 방지 */
+}
 /* 메인 래퍼 (사이드바와 콘텐츠를 포함) */
 .main-wrapper {
 	display: flex;
@@ -27,13 +61,6 @@
 /* 사이드바가 닫혔을 때 메인 콘텐츠 조정 */
 .main-content.sidebar-closed {
 	margin-left: 0;
-}
-
-/* 콘텐츠 컨테이너 */
-.content-container {
-	flex: 1;
-	padding: 20px;
-	overflow-y: auto;
 }
 
 /* 모듈 컨테이너 (임시 컴포넌트용) */
@@ -134,4 +161,30 @@
 	.content-container {
 		padding: 10px;
 	}
+}
+
+/* 버튼 가독성 개선을 위한 스타일 */
+.vendor-type-btn {
+	padding: 8px 16px;
+	font-size: 14px;
+	font-weight: 500;
+	color: #333;
+	background-color: #f5f5f5;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: all 0.3s;
+	text-shadow: none;
+	letter-spacing: 0.5px;
+}
+
+.vendor-type-btn.active {
+	color: #fff;
+	background-color: #2980b9;
+	border-color: #2980b9;
+	font-weight: 600;
+}
+
+.vendor-type-btn:hover:not(.active) {
+	background-color: #e9ecef;
 }

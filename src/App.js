@@ -17,6 +17,9 @@ import OrderManagement from "./components/OrderManagement/OrderManagement";
 import FinancialManagement from "./components/FinancialManagement/FinancialManagement";
 import SettingsPage from "./components/Settings/SettingsPage";
 import NotFoundPage from "./components/common/NotFoundPage";
+import FloorInventoryManagement from "./components/InventoryManagement/FloorInventoryManagement";
+import Floor2OrderManagement from "./components/OrderManagement/Floor2OrderManagement";
+import Floor4OrderManagement from "./components/OrderManagement/Floor4OrderManagement";
 
 // Import layout components
 import MainLayout from "./components/layouts/MainLayout";
@@ -54,6 +57,42 @@ const AppRoutes = () => {
 	useEffect(() => {
 		window.scrollTo(0, 0);
 	}, [location.pathname]);
+
+	useEffect(() => {
+		// 현재 경로 확인
+		const currentPath = window.location.pathname;
+
+		// 버튼 요소 가져오기
+		const vendorBtn = document.querySelector(
+			'.vendor-type-btn[data-type="vendor"]'
+		);
+		const processorBtn = document.querySelector(
+			'.vendor-type-btn[data-type="processor"]'
+		);
+
+		// 모든 버튼에서 active 클래스 제거
+		document.querySelectorAll(".vendor-type-btn").forEach((btn) => {
+			btn.classList.remove("active");
+		});
+
+		// VendorManagement 컴포넌트의 상태 업데이트를 위한 이벤트 발생
+		let vendorType = "vendor"; // 기본값
+
+		// 경로에 따라 해당 버튼 활성화 및 데이터 타입 설정
+		if (currentPath.includes("/purchase/vendors")) {
+			vendorBtn?.classList.add("active");
+			vendorType = "vendor";
+		} else if (currentPath.includes("/purchase/processors")) {
+			processorBtn?.classList.add("active");
+			vendorType = "processor";
+		}
+
+		// 커스텀 이벤트를 통해 VendorManagement 컴포넌트에 데이터 타입 변경 알림
+		const event = new CustomEvent("vendorTypeChange", {
+			detail: { vendorType },
+		});
+		document.dispatchEvent(event);
+	}, [window.location.pathname]);
 
 	return (
 		<Routes>
@@ -123,17 +162,24 @@ const AppRoutes = () => {
 				<Route path="orders">
 					{/* Removed dashboard redirect */}
 					<Route
+						path="dashboard"
+						element={<Dashboard module="orders" />}
+					/>
+					<Route
 						path="management"
 						element={<OrderManagement />}
 					/>
 					<Route
+						path="management/floor2"
+						element={<Floor2OrderManagement />}
+					/>
+					<Route
+						path="management/floor4"
+						element={<Floor4OrderManagement />}
+					/>
+					<Route
 						path="inventory"
 						element={<InventoryManagement inventoryType="product" />}
-					/>
-					{/* Keep dashboard as an explicit route */}
-					<Route
-						path="dashboard"
-						element={<Dashboard module="orders" />}
 					/>
 				</Route>
 
@@ -163,6 +209,12 @@ const AppRoutes = () => {
 			<Route
 				path="*"
 				element={<NotFoundPage />}
+			/>
+
+			{/* 층별 자재관리 라우트 */}
+			<Route
+				path="/floor/inventory"
+				element={<FloorInventoryManagement />}
 			/>
 		</Routes>
 	);

@@ -109,9 +109,40 @@ const Sidebar = ({
 						<li className="sidebar-menu-item">
 							<NavLink
 								to="/orders/management"
+								end
 								className={({ isActive }) => (isActive ? "active" : "")}>
 								<span className="sidebar-icon">📋</span>
-								{!collapsed && <span className="sidebar-label">수주 관리</span>}
+								{!collapsed && <span className="sidebar-label">주문 관리</span>}
+							</NavLink>
+						</li>
+						<li className="sidebar-menu-item">
+							<NavLink
+								to="/orders/management/floor2"
+								className={({ isActive }) => (isActive ? "active" : "")}>
+								<span className="sidebar-icon">🏢</span>
+								{!collapsed && (
+									<span className="sidebar-label">2층 영업부 주문</span>
+								)}
+							</NavLink>
+						</li>
+						<li className="sidebar-menu-item">
+							<NavLink
+								to="/orders/management/floor4"
+								className={({ isActive }) => (isActive ? "active" : "")}>
+								<span className="sidebar-icon">🏢</span>
+								{!collapsed && (
+									<span className="sidebar-label">4층 관리부 주문</span>
+								)}
+							</NavLink>
+						</li>
+						<li className="sidebar-menu-item">
+							<NavLink
+								to="/floor/inventory"
+								className={({ isActive }) => (isActive ? "active" : "")}>
+								<span className="sidebar-icon">🏭</span>
+								{!collapsed && (
+									<span className="sidebar-label">3층 자재부 관리</span>
+								)}
 							</NavLink>
 						</li>
 						<li className="sidebar-menu-item">

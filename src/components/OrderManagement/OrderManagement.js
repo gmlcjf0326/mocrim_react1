@@ -1,34 +1,42 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useNotification } from "../../contexts/NotificationContext";
 import "./OrderManagement.css";
-
+// Add this import at the top of your file
+import PropTypes from "prop-types";
 /**
- * OrderManagement 컴포넌트
+ * OrderManagement Component
  *
- * 주문 접수, 확인, 처리 및 자재부/생산부 요청 관리
- * view 타입: list, create, details, process
+ * Enhanced implementation for order management with proper data rendering
+ * and improved filtering capabilities.
+ *
+ * @param {Object} props Component props
+ * @param {string} props.view Current view mode ('list', 'create', 'details', or 'process')
  */
 const OrderManagement = ({ view = "list" }) => {
-	// 라우터 훅
+	// Router hooks
 	const { orderId } = useParams();
 	const navigate = useNavigate();
 	const { showNotification } = useNotification();
 
-	// 상태 관리
+	// State management
 	const [activeTab, setActiveTab] = useState("all");
 	const [orders, setOrders] = useState([]);
 	const [selectedOrder, setSelectedOrder] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
+	const prevOrdersRef = useRef([]);
 
-	// 필터 상태
+	// Filter states
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
-	const [dateRangeFilter, setDateRangeFilter] = useState("all");
+	const [dateRangeFilter, setDateRangeFilter] = useState({
+		startDate: "",
+		endDate: "",
+	});
 	const [sortBy, setSortBy] = useState("newest");
 
-	// 새 주문 폼 데이터
+	// New order form data
 	const [formData, setFormData] = useState({
 		customerName: "",
 		customerContact: "",
@@ -39,12 +47,13 @@ const OrderManagement = ({ view = "list" }) => {
 		notes: "",
 	});
 
-	// 주문 데이터 불러오기 (목업 데이터)
+	// Fetch orders data
 	useEffect(() => {
 		const fetchOrders = async () => {
 			try {
 				setLoading(true);
-				// 실제 구현에서는 API 호출로 대체됨
+
+				// Mock data for demonstration - would be replaced with actual API call
 				const mockOrders = [
 					{
 						id: "ORD-20230001",
@@ -308,8 +317,29 @@ const OrderManagement = ({ view = "list" }) => {
 					},
 				];
 
-				// 특정 주문 상세 조회 시 해당 주문 저장
-				if (view === "details" || view === "process") {
+				// Filter orders based on active tab
+				let filteredOrders = mockOrders;
+				if (activeTab === "new") {
+					filteredOrders = mockOrders.filter((order) => order.status === "new");
+				} else if (activeTab === "processing") {
+					filteredOrders = mockOrders.filter((order) =>
+						["confirmed", "processing"].includes(order.status)
+					);
+				} else if (activeTab === "completed") {
+					filteredOrders = mockOrders.filter(
+						(order) => order.status === "completed"
+					);
+				} else if (activeTab === "cancelled") {
+					filteredOrders = mockOrders.filter(
+						(order) => order.status === "cancelled"
+					);
+				}
+
+				setOrders(filteredOrders);
+				prevOrdersRef.current = filteredOrders;
+
+				// Handle specific order details view or process view
+				if ((view === "details" || view === "process") && orderId) {
 					const foundOrder = mockOrders.find((order) => order.id === orderId);
 					if (foundOrder) {
 						setSelectedOrder(foundOrder);
@@ -318,8 +348,6 @@ const OrderManagement = ({ view = "list" }) => {
 					}
 				}
 
-				// 모든 주문 데이터 저장
-				setOrders(mockOrders);
 				setLoading(false);
 			} catch (err) {
 				console.error("주문 데이터 로딩 중 오류:", err);
@@ -329,54 +357,63 @@ const OrderManagement = ({ view = "list" }) => {
 		};
 
 		fetchOrders();
-	}, [view, orderId]);
+	}, [view, orderId, activeTab]);
 
-	// 필터링된 주문 목록
-	const filteredOrders = orders
-		.filter((order) => {
-			// 검색어 필터링
-			const searchMatches =
-				order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				order.customerName.toLowerCase().includes(searchQuery.toLowerCase());
+	// Apply filters to orders
+	const filteredOrders = useCallback(() => {
+		if (!orders || orders.length === 0) return [];
 
-			// 상태 필터링
-			const statusMatches =
-				statusFilter === "all" || order.status === statusFilter;
+		return orders
+			.filter((order) => {
+				// Search filter
+				if (
+					searchQuery &&
+					!order.id.toLowerCase().includes(searchQuery.toLowerCase()) &&
+					!order.customerName.toLowerCase().includes(searchQuery.toLowerCase())
+				) {
+					return false;
+				}
 
-			// 날짜 범위 필터링
-			let dateMatches = true;
-			const orderDate = new Date(order.orderDate);
-			const today = new Date();
+				// Status filter
+				if (statusFilter !== "all" && order.status !== statusFilter) {
+					return false;
+				}
 
-			if (dateRangeFilter === "today") {
-				dateMatches = orderDate.toDateString() === today.toDateString();
-			} else if (dateRangeFilter === "week") {
-				const weekAgo = new Date();
-				weekAgo.setDate(today.getDate() - 7);
-				dateMatches = orderDate >= weekAgo;
-			} else if (dateRangeFilter === "month") {
-				const monthAgo = new Date();
-				monthAgo.setMonth(today.getMonth() - 1);
-				dateMatches = orderDate >= monthAgo;
-			}
+				// Date range filter
+				if (
+					dateRangeFilter.startDate &&
+					new Date(order.orderDate) < new Date(dateRangeFilter.startDate)
+				) {
+					return false;
+				}
 
-			return searchMatches && statusMatches && dateMatches;
-		})
-		.sort((a, b) => {
-			// 정렬
-			if (sortBy === "newest") {
-				return new Date(b.orderDate) - new Date(a.orderDate);
-			} else if (sortBy === "oldest") {
-				return new Date(a.orderDate) - new Date(b.orderDate);
-			} else if (sortBy === "amount-high") {
-				return b.totalAmount - a.totalAmount;
-			} else if (sortBy === "amount-low") {
-				return a.totalAmount - b.totalAmount;
-			}
-			return 0;
-		});
+				if (
+					dateRangeFilter.endDate &&
+					new Date(order.orderDate) > new Date(dateRangeFilter.endDate)
+				) {
+					return false;
+				}
 
-	// 상태에 따른 배지 클래스
+				return true;
+			})
+			.sort((a, b) => {
+				// Sorting logic
+				switch (sortBy) {
+					case "newest":
+						return new Date(b.orderDate) - new Date(a.orderDate);
+					case "oldest":
+						return new Date(a.orderDate) - new Date(b.orderDate);
+					case "amount-high":
+						return b.totalAmount - a.totalAmount;
+					case "amount-low":
+						return a.totalAmount - b.totalAmount;
+					default:
+						return 0;
+				}
+			});
+	}, [orders, searchQuery, statusFilter, dateRangeFilter, sortBy]);
+
+	// Get status badge class based on order status
 	const getStatusBadgeClass = (status) => {
 		const classes = {
 			new: "status-new",
@@ -389,7 +426,7 @@ const OrderManagement = ({ view = "list" }) => {
 		return `status-badge ${classes[status] || ""}`;
 	};
 
-	// 상태 텍스트 변환
+	// Format status text for display
 	const getStatusText = (status) => {
 		const statuses = {
 			new: "신규",
@@ -402,14 +439,14 @@ const OrderManagement = ({ view = "list" }) => {
 		return statuses[status] || status;
 	};
 
-	// 날짜 포맷팅
+	// Format date for display
 	const formatDate = (dateString) => {
 		if (!dateString) return "-";
 		const options = { year: "numeric", month: "2-digit", day: "2-digit" };
 		return new Date(dateString).toLocaleDateString("ko-KR", options);
 	};
 
-	// 금액 포맷팅
+	// Format currency for display
 	const formatCurrency = (amount) => {
 		return new Intl.NumberFormat("ko-KR", {
 			style: "currency",
@@ -417,17 +454,17 @@ const OrderManagement = ({ view = "list" }) => {
 		}).format(amount);
 	};
 
-	// 주문 상세 보기로 이동
+	// View order details
 	const handleViewDetails = (order) => {
 		navigate(`/orders/details/${order.id}`);
 	};
 
-	// 주문 처리 페이지로 이동
+	// Process order
 	const handleProcessOrder = (order) => {
 		navigate(`/orders/process/${order.id}`);
 	};
 
-	// 주문 아이템 추가
+	// Add order item
 	const handleAddOrderItem = () => {
 		const newItem = {
 			id: Date.now(),
@@ -437,83 +474,132 @@ const OrderManagement = ({ view = "list" }) => {
 			price: 0,
 		};
 
-		setFormData({
-			...formData,
-			orderItems: [...formData.orderItems, newItem],
-		});
+		setFormData((prev) => ({
+			...prev,
+			orderItems: [...prev.orderItems, newItem],
+		}));
 	};
 
-	// 주문 아이템 수정
+	// Update order item
 	const handleOrderItemChange = (itemId, field, value) => {
-		setFormData({
-			...formData,
-			orderItems: formData.orderItems.map((item) =>
+		setFormData((prev) => ({
+			...prev,
+			orderItems: prev.orderItems.map((item) =>
 				item.id === itemId ? { ...item, [field]: value } : item
 			),
-		});
+		}));
 	};
 
-	// 주문 아이템 삭제
+	// Remove order item
 	const handleRemoveOrderItem = (itemId) => {
-		setFormData({
-			...formData,
-			orderItems: formData.orderItems.filter((item) => item.id !== itemId),
-		});
+		setFormData((prev) => ({
+			...prev,
+			orderItems: prev.orderItems.filter((item) => item.id !== itemId),
+		}));
 	};
 
-	// 폼 필드 수정
+	// Update form field
 	const handleFormChange = (field, value) => {
-		setFormData({
-			...formData,
+		setFormData((prev) => ({
+			...prev,
 			[field]: value,
-		});
+		}));
 	};
 
-	// 주문 제출
+	// Submit order
 	const handleSubmitOrder = (e) => {
 		e.preventDefault();
 
-		// 필수 필드 검증
+		// Validate required fields
 		if (
 			!formData.customerName ||
 			!formData.customerContact ||
 			!formData.deliveryAddress ||
 			formData.orderItems.length === 0
 		) {
-			alert("필수 필드를 모두 입력해주세요.");
+			showNotification({
+				title: "입력 오류",
+				message: "필수 필드를 모두 입력해주세요.",
+				type: "error",
+			});
 			return;
 		}
 
-		// 아이템 검증
+		// Validate items
 		const invalidItems = formData.orderItems.filter(
 			(item) => !item.name || item.quantity <= 0 || item.price <= 0
 		);
+
 		if (invalidItems.length > 0) {
-			alert("모든 주문 항목을 올바르게 입력해주세요.");
+			showNotification({
+				title: "입력 오류",
+				message: "모든 주문 항목을 올바르게 입력해주세요.",
+				type: "error",
+			});
 			return;
 		}
 
-		// 실제 구현에서는 API 호출로 주문 생성
+		// Calculate total amount
+		const totalAmount = formData.orderItems.reduce(
+			(sum, item) => sum + item.quantity * item.price,
+			0
+		);
+
+		// Create new order
+		const newOrder = {
+			id: `ORD-${Date.now()}`,
+			orderDate: new Date().toISOString().split("T")[0],
+			requestedDate:
+				formData.requestedDate ||
+				new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+					.toISOString()
+					.split("T")[0],
+			status: "new",
+			customerName: formData.customerName,
+			customerContact: formData.customerContact,
+			customerEmail: formData.customerEmail,
+			deliveryAddress: formData.deliveryAddress,
+			notes: formData.notes,
+			totalAmount,
+			items: formData.orderItems,
+			processSteps: [
+				{
+					id: 1,
+					name: "주문 접수",
+					status: "completed",
+					date: new Date().toISOString().split("T")[0],
+				},
+				{ id: 2, name: "재고 확인", status: "pending", date: null },
+				{ id: 3, name: "자재부 요청", status: "pending", date: null },
+				{ id: 4, name: "생산부 요청", status: "pending", date: null },
+				{ id: 5, name: "출고 준비", status: "pending", date: null },
+				{ id: 6, name: "출고 완료", status: "pending", date: null },
+			],
+		};
+
+		// Add order to list (in real app, this would be an API call)
+		setOrders((prev) => [newOrder, ...prev]);
+
 		showNotification({
-			title: "주문 생성",
+			title: "주문 생성 완료",
 			message: "새 주문이 성공적으로 생성되었습니다.",
 			type: "success",
 		});
 
-		// 주문 목록으로 리다이렉트
+		// Redirect to order list
 		navigate("/orders/list");
 	};
 
-	// 주문 처리 상태 업데이트
+	// Update order process step
 	const handleUpdateProcessStep = (stepId, status) => {
 		if (!selectedOrder) return;
 
-		// 실제 구현에서는 API 호출로 상태 업데이트
+		// Update step status
 		const updatedSteps = selectedOrder.processSteps.map((step) => {
 			if (step.id === stepId) {
 				return {
 					...step,
-					status: status,
+					status,
 					date:
 						status === "completed"
 							? new Date().toISOString().split("T")[0]
@@ -523,13 +609,21 @@ const OrderManagement = ({ view = "list" }) => {
 			return step;
 		});
 
-		// 상태 업데이트
-		setSelectedOrder({
+		// Update order
+		const updatedOrder = {
 			...selectedOrder,
 			processSteps: updatedSteps,
-		});
+		};
 
-		// 알림 표시
+		setSelectedOrder(updatedOrder);
+
+		// Update order in list
+		setOrders((prev) =>
+			prev.map((order) =>
+				order.id === selectedOrder.id ? updatedOrder : order
+			)
+		);
+
 		showNotification({
 			title: "처리 상태 업데이트",
 			message: `주문 ${selectedOrder.id}의 처리 단계가 업데이트되었습니다.`,
@@ -537,20 +631,30 @@ const OrderManagement = ({ view = "list" }) => {
 		});
 	};
 
-	// 최종 주문 상태 업데이트 (모든 단계 완료 시)
+	// Finalize order
 	const handleFinalizeOrder = () => {
 		if (!selectedOrder) return;
 
-		// 실제 구현에서는 API 호출로 상태 업데이트
+		// Check if all steps are completed
 		const allStepsCompleted = selectedOrder.processSteps.every(
 			(step) => step.status === "completed"
 		);
 
 		if (allStepsCompleted) {
-			setSelectedOrder({
+			// Update order status
+			const updatedOrder = {
 				...selectedOrder,
 				status: "completed",
-			});
+			};
+
+			setSelectedOrder(updatedOrder);
+
+			// Update order in list
+			setOrders((prev) =>
+				prev.map((order) =>
+					order.id === selectedOrder.id ? updatedOrder : order
+				)
+			);
 
 			showNotification({
 				title: "주문 완료",
@@ -558,15 +662,21 @@ const OrderManagement = ({ view = "list" }) => {
 				type: "success",
 			});
 
-			// 주문 목록으로 리다이렉트
+			// Redirect to order list
 			navigate("/orders/list");
 		} else {
-			alert("모든 처리 단계를 완료해야 합니다.");
+			showNotification({
+				title: "처리 오류",
+				message: "모든 처리 단계를 완료해야 합니다.",
+				type: "error",
+			});
 		}
 	};
 
-	// 주문 목록 뷰 렌더링
+	// Render order list view
 	const renderOrderListView = () => {
+		const displayOrders = filteredOrders();
+
 		return (
 			<>
 				<div className="order-header">
@@ -640,8 +750,25 @@ const OrderManagement = ({ view = "list" }) => {
 							<label className="filter-label">날짜 범위</label>
 							<select
 								className="filter-select"
-								value={dateRangeFilter}
-								onChange={(e) => setDateRangeFilter(e.target.value)}>
+								onChange={(e) => {
+									const now = new Date();
+									let startDate = "";
+
+									if (e.target.value === "today") {
+										startDate = now.toISOString().split("T")[0];
+									} else if (e.target.value === "week") {
+										const weekAgo = new Date(now.setDate(now.getDate() - 7));
+										startDate = weekAgo.toISOString().split("T")[0];
+									} else if (e.target.value === "month") {
+										const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
+										startDate = monthAgo.toISOString().split("T")[0];
+									}
+
+									setDateRangeFilter((prev) => ({
+										...prev,
+										startDate,
+									}));
+								}}>
 								<option value="all">전체 기간</option>
 								<option value="today">오늘</option>
 								<option value="week">최근 7일</option>
@@ -666,7 +793,7 @@ const OrderManagement = ({ view = "list" }) => {
 				<div className="order-list-section">
 					<div className="section-title">
 						<span>주문 목록</span>
-						<span className="item-count">{filteredOrders.length}개 항목</span>
+						<span className="item-count">{displayOrders.length}개 항목</span>
 					</div>
 
 					{loading ? (
@@ -675,7 +802,7 @@ const OrderManagement = ({ view = "list" }) => {
 						</div>
 					) : error ? (
 						<div className="error-message">{error}</div>
-					) : filteredOrders.length > 0 ? (
+					) : displayOrders.length > 0 ? (
 						<table className="order-table">
 							<thead>
 								<tr>
@@ -689,7 +816,7 @@ const OrderManagement = ({ view = "list" }) => {
 								</tr>
 							</thead>
 							<tbody>
-								{filteredOrders.map((order) => (
+								{displayOrders.map((order) => (
 									<tr key={order.id}>
 										<td>{order.id}</td>
 										<td>{order.customerName}</td>
@@ -735,7 +862,7 @@ const OrderManagement = ({ view = "list" }) => {
 		);
 	};
 
-	// 주문 생성 뷰 렌더링
+	// Render order create view
 	const renderOrderCreateView = () => {
 		return (
 			<div className="order-form">
@@ -976,7 +1103,7 @@ const OrderManagement = ({ view = "list" }) => {
 		);
 	};
 
-	// 주문 상세 뷰 렌더링
+	// Render order details view
 	const renderOrderDetailsView = () => {
 		if (loading) {
 			return (
@@ -1134,7 +1261,7 @@ const OrderManagement = ({ view = "list" }) => {
 		);
 	};
 
-	// 주문 처리 뷰 렌더링
+	// Render order process view
 	const renderOrderProcessView = () => {
 		if (loading) {
 			return (
@@ -1279,8 +1406,8 @@ const OrderManagement = ({ view = "list" }) => {
 		);
 	};
 
-	// 현재 뷰에 맞는 컴포넌트 렌더링
-	const renderContent = () => {
+	// Render appropriate view based on current view type
+	const renderView = () => {
 		switch (view) {
 			case "list":
 				return renderOrderListView();
@@ -1295,7 +1422,12 @@ const OrderManagement = ({ view = "list" }) => {
 		}
 	};
 
-	return <div className="order-management">{renderContent()}</div>;
+	return <div className="order-management">{renderView()}</div>;
+};
+
+// PropTypes for component validation
+OrderManagement.propTypes = {
+	view: PropTypes.oneOf(["list", "create", "details", "process"]),
 };
 
 export default OrderManagement;
